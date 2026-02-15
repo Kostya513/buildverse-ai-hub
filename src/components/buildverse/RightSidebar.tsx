@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 
 const RightSidebar = () => {
   return (
-    <aside className="hidden xl:flex flex-col gap-4 w-64 shrink-0 p-2 overflow-y-auto max-h-[calc(100vh-7rem)]">
+    <aside className="hidden xl:flex flex-col gap-4 w-64 shrink-0 p-2 overflow-y-auto scrollbar-none">
       {/* AI Assistant */}
       <div className="glass-card rounded-2xl p-4 space-y-3">
         <div className="flex items-center gap-2">
