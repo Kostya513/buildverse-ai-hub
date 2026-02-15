@@ -23,7 +23,7 @@ interface LeftLauncherProps {
 
 const LeftLauncher = ({ activeId, onSelect }: LeftLauncherProps) => {
   return (
-    <aside className="hidden lg:flex flex-col gap-2 w-60 xl:w-64 shrink-0 p-2 overflow-y-auto max-h-[calc(100vh-7rem)]">
+    <aside className="hidden lg:flex flex-col gap-2 w-60 xl:w-64 shrink-0 p-2 overflow-y-auto scrollbar-none">
       {tiles.map((tile) => (
         <button
           key={tile.id}
