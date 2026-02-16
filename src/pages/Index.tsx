@@ -8,8 +8,9 @@ import Footer from "@/components/buildverse/Footer";
 import AuthModal from "@/components/buildverse/AuthModal";
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState("geo");
+  const [activeSection, setActiveSection] = useState("chat");
   const [authModal, setAuthModal] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -17,7 +18,12 @@ const Index = () => {
 
       <div className="flex-1 flex pt-16 pb-20 lg:pb-4 px-2 md:px-4 gap-3 max-w-[1600px] mx-auto w-full">
         <LeftLauncher activeId={activeSection} onSelect={setActiveSection} />
-        <CenterZone activeSection={activeSection} onRequestAuth={() => setAuthModal(true)} />
+        <CenterZone
+          activeSection={activeSection}
+          onRequestAuth={() => setAuthModal(true)}
+          onNavigate={setActiveSection}
+          userRole={userRole}
+        />
         <RightSidebar />
       </div>
 
