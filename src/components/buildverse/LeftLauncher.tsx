@@ -1,9 +1,10 @@
 import {
   Globe, FolderOpen, MessageSquare, Building2, ShoppingCart,
-  HardHat, Calculator, Brain, Home, Bell,
+  HardHat, Calculator, Brain, Home, Bell, Bot,
 } from "lucide-react";
 
 const tiles = [
+  { icon: Bot, label: "AI-агент", id: "chat" },
   { icon: Globe, label: "Геоинтеллект", id: "geo" },
   { icon: FolderOpen, label: "Мои проекты", id: "projects" },
   { icon: MessageSquare, label: "Стройнет", id: "stroynet" },

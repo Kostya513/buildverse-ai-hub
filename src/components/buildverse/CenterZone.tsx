@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   MapPin, Cloud, Mountain, TreePine, Sun, Layers, Plus, Paperclip, Mic, Send,
   MessageSquare, Clock, Wand2, Search, Filter, FolderOpen, Heart, ThumbsUp,
-  User, Building2, PenTool, ChevronRight, Sparkles, Eye,
+  User, Building2, PenTool, ChevronRight, Sparkles, Eye, Bot, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,9 +48,12 @@ const geoTabContent: Record<string, { title: string; text: string; ai: string }>
 interface CenterZoneProps {
   activeSection: string;
   onRequestAuth: () => void;
+  onNavigate: (id: string) => void;
+  userRole?: string | null;
 }
 
 const sectionTitles: Record<string, string> = {
+  chat: "AI-агент BUILDVERSE",
   geo: "Геоинтеллект",
   projects: "Мои проекты",
   stroynet: "Стройнет",
@@ -64,16 +67,173 @@ const sectionTitles: Record<string, string> = {
 };
 
 /* ═══════════════════════════════════════════
+   AI CHAT (DEFAULT SCREEN)
+   ═══════════════════════════════════════════ */
+
+const roleGreetings: Record<string, string> = {
+  private: "Помогу спроектировать ваш дом или дачу — от анализа участка до интерьера.",
+  selfemployed: "Помогу с вашими строительными проектами — от сметы до подбора материалов.",
+  ip: "Помогу собрать пул проектов, сметы и тендеры для вашего бизнеса.",
+  ooo: "Помогу собрать пул проектов, сметы и тендеры для вашего бизнеса.",
+  supplier: "Помогу подключиться к маркетплейсу и находить клиентов в экосистеме.",
+  architect: "Помогу оформить портфолио и работать с 3D-моделями для ваших заказчиков.",
+};
+
+interface ChatMessage {
+  from: "agent" | "user";
+  text: string;
+  button?: { label: string; action: string };
+}
+
+const AIChatContent = ({ onNavigate, userRole }: { onNavigate: (id: string) => void; userRole?: string | null }) => {
+  const greeting = userRole && roleGreetings[userRole]
+    ? roleGreetings[userRole]
+    : "Помогу спроектировать дом, оценить участок и собрать смету.";
+
+  const initialMessages: ChatMessage[] = [
+    {
+      from: "agent",
+      text: `Здравствуйте! Я ваш AI-агент BUILDVERSE. ${greeting}\n\nОтветьте на несколько вопросов:\n\n1. Где находится ваш участок (город/регион)?\n2. Площадь дома (м²) и этажность?\n3. Примерный бюджет (₽ или $)?\n4. Важно ли использовать готовые решения или хотите максимум индивидуальности?\n5. Нужен ли дизайн интерьера сразу?`,
+    },
+  ];
+
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [input, setInput] = useState("");
+  const [step, setStep] = useState(0); // 0=initial, 1=user answered, 2=agent replied with geo
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const userMsg: ChatMessage = { from: "user", text: input };
+    const newMessages = [...messages, userMsg];
+
+    if (step === 0) {
+      newMessages.push({
+        from: "agent",
+        text: "Отлично! Я нашёл ваш регион. Давайте посмотрим данные по участку — климат, грунт, рельеф и экологию. Это поможет подобрать оптимальный проект.",
+        button: { label: "Открыть Геоинтеллект", action: "geo" },
+      });
+      setStep(1);
+    } else {
+      newMessages.push({
+        from: "agent",
+        text: "Принял! Анализирую данные и подготовлю рекомендации. Вы можете переключиться на нужный модуль в левой панели или продолжить диалог здесь.",
+      });
+    }
+
+    setMessages(newMessages);
+    setInput("");
+  };
+
+  const handleChip = (text: string) => {
+    setInput(text);
+  };
+
+  const chips = [
+    "У меня есть участок, хочу дом",
+    "Только планирую покупку участка",
+    "Я девелопер, мне нужны несколько домов",
+  ];
+
+  return (
+    <div className="flex flex-col h-full animate-fade-in">
+      {/* Hero */}
+      <div className="text-center mb-4">
+        <div className="inline-flex items-center gap-2 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+            <Bot className="w-6 h-6 text-primary" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground">BUILDVERSE — ваш AI-агент для строительства</h2>
+        </div>
+        <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+          Не просто чат. Это ваш личный AI-архитектор и девелопер.
+        </p>
+        <p className="text-xs text-muted-foreground/70 mt-1 max-w-md mx-auto">
+          Он анализирует участок, считает смету, подбирает материалы и помогает вписать дом в природу — от фундамента до декора.
+        </p>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto scrollbar-none space-y-3 mb-3">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-line ${
+              msg.from === "user"
+                ? "bg-primary/20 text-foreground ml-4"
+                : "bg-white/5 text-muted-foreground mr-4"
+            }`}>
+              {msg.text}
+              {msg.button && (
+                <Button
+                  size="sm"
+                  className="mt-3 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 w-full"
+                  onClick={() => onNavigate(msg.button!.action)}
+                >
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  {msg.button.label}
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chips */}
+      {step === 0 && (
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-2">
+          {chips.map((c) => (
+            <button
+              key={c}
+              onClick={() => handleChip(c)}
+              className="glass-card px-3 py-1.5 rounded-full text-xs text-muted-foreground hover:text-primary hover:border-primary/30 whitespace-nowrap transition-all"
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input bar */}
+      <div className="glass-card rounded-2xl p-3 flex items-center gap-2">
+        <button className="text-muted-foreground hover:text-primary transition-colors p-1">
+          <Paperclip className="w-4 h-4" />
+        </button>
+        <button className="text-muted-foreground hover:text-primary transition-colors p-1">
+          <Mic className="w-4 h-4" />
+        </button>
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          placeholder="Опишите ваш участок и дом, который хотите…"
+          className="flex-1 bg-transparent border-0 text-foreground placeholder:text-muted-foreground focus-visible:ring-0 text-sm"
+        />
+        <button onClick={handleSend} className="text-primary hover:text-primary/80 transition-colors p-1">
+          <Send className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════
    GEO CONTENT
    ═══════════════════════════════════════════ */
-const GeoContent = () => {
+const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
   const [activeTab, setActiveTab] = useState("climate");
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const tab = geoTabContent[activeTab];
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {/* Note */}
+      <div className="glass-card rounded-xl p-3 border border-primary/20 flex items-start gap-2">
+        <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+        <p className="text-xs text-muted-foreground">
+          Эти данные использует ваш AI-агент, чтобы проект соответствовал климату, грунту и нормам.{" "}
+          <button onClick={() => onNavigate("chat")} className="text-primary hover:underline">Вернуться в чат →</button>
+        </p>
+      </div>
+
       {/* Map */}
       <div className="glass-card rounded-2xl h-52 md:h-64 flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/5" />
@@ -148,23 +308,14 @@ const GeoContent = () => {
         </ul>
       </div>
 
-      {/* Create project */}
-      <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30" onClick={() => setShowChat(!showChat)}>
+      {/* Create project → opens chat */}
+      <Button
+        className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
+        onClick={() => onNavigate("chat")}
+      >
         <Plus className="w-4 h-4 mr-2" />
-        Создать проект
+        Создать проект через AI-агента
       </Button>
-
-      {showChat && (
-        <div className="glass-card rounded-xl p-4 space-y-3 animate-fade-in border border-primary/20">
-          <p className="text-xs text-muted-foreground">Чат с ИИ:</p>
-          <div className="bg-primary/10 rounded-lg px-3 py-2 text-xs text-foreground">
-            Участок в Истринском р-не МО. Климат: снеговая 180 кг/м², ветер III зона. Грунт: суглинок, УГВ 2.1 м. Помоги предложить тип фундамента и общую концепцию дома.
-          </div>
-          <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-muted-foreground">
-            Рекомендую: 2-этажный каркасный дом на утеплённой шведской плите (УШП). Ориентация главного фасада — юго-восток. Угол ската кровли — 38° для оптимального снегосброса. Площадь дома: 150–180 м².
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -179,9 +330,8 @@ const projectsMock = [
   { id: 4, name: "Дача в Переделкино", type: "Дом", status: "Завершён", progress: 100 },
 ];
 
-const ProjectsContent = () => {
+const ProjectsContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
   const [filter, setFilter] = useState("all");
-  const [showNewChat, setShowNewChat] = useState(false);
   const filters = ["all", "active", "draft", "done"];
   const filterLabels: Record<string, string> = { all: "Все", active: "Активные", draft: "Черновики", done: "Завершённые" };
   const statusMap: Record<string, string> = { active: "В работе", draft: "Черновик", done: "Завершён" };
@@ -190,7 +340,6 @@ const ProjectsContent = () => {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Filters */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
         {filters.map((f) => (
           <button key={f} onClick={() => setFilter(f)}
@@ -201,7 +350,6 @@ const ProjectsContent = () => {
         ))}
       </div>
 
-      {/* Project cards */}
       {filtered.map((p) => (
         <div key={p.id} className="glass-card rounded-xl p-4 space-y-2">
           <div className="flex items-start justify-between">
@@ -222,27 +370,17 @@ const ProjectsContent = () => {
             <Button variant="ghost" size="sm" className="glass-card text-foreground text-xs flex-1">
               <FolderOpen className="w-3.5 h-3.5 mr-1" /> Открыть
             </Button>
-            <Button variant="ghost" size="sm" className="glass-card text-foreground text-xs flex-1">
+            <Button variant="ghost" size="sm" className="glass-card text-foreground text-xs flex-1" onClick={() => onNavigate("chat")}>
               <MessageSquare className="w-3.5 h-3.5 mr-1" /> Чат с ИИ
             </Button>
           </div>
         </div>
       ))}
 
-      {/* New project */}
       <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30"
-        onClick={() => setShowNewChat(!showNewChat)}>
+        onClick={() => onNavigate("chat")}>
         <Plus className="w-4 h-4 mr-2" /> Новый проект
       </Button>
-
-      {showNewChat && (
-        <div className="glass-card rounded-xl p-4 space-y-2 animate-fade-in border border-primary/20">
-          <p className="text-xs text-muted-foreground">Чат с ИИ:</p>
-          <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-muted-foreground">
-            Создаём новый проект. Опишите участок и требования (площадь, этажность, стиль).
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -254,25 +392,25 @@ const postsMock = [
   {
     id: 1, author: "Иван Петров", role: "Частный застройщик", icon: User,
     title: "Какой фундамент выбрать для суглинка?",
-    text: "Участок 12 соток, суглинок, УГВ 1.8 м. Планирую одноэтажный дом 120 м². Свайный или плита? Кто делал на похожем грунте?",
+    text: "Участок 12 соток, суглинок, УГВ 1.8 м. Планирую одноэтажный дом 120 м². Свайный или плита?",
     tags: ["#Фундамент"], likes: 12, replies: 8,
   },
   {
     id: 2, author: "ООО «СтройГрад»", role: "Подрядчик", icon: Building2,
-    title: "Ищем заказы на фундаментные работы — Московская область",
-    text: "Бригада 8 человек, опыт 12 лет. Делаем УШП, свайно-ростверковые, монолитные плиты. Есть свободные слоты на август.",
+    title: "Ищем заказы на фундаментные работы — МО",
+    text: "Бригада 8 человек, опыт 12 лет. Делаем УШП, свайно-ростверковые, монолитные плиты.",
     tags: ["#Фундамент", "#Инвестиции"], likes: 5, replies: 3,
   },
   {
     id: 3, author: "Анна Сидорова", role: "Архитектор", icon: PenTool,
     title: "3D-концепт эко-дома с зелёной кровлей",
-    text: "Разработала проект пассивного дома 180 м² с зелёной кровлей и солнечными панелями. Энергопотребление — 15 кВт·ч/м²/год. Делюсь концептом.",
+    text: "Разработала проект пассивного дома 180 м² с зелёной кровлей и солнечными панелями.",
     tags: ["#Эко", "#УмныйДом"], likes: 24, replies: 15,
   },
   {
     id: 4, author: "Дмитрий Козлов", role: "Самозанятый", icon: User,
     title: "Опыт установки умного дома на базе Zigbee",
-    text: "Поставил 40 датчиков, автоматизировал отопление и освещение. Экономия 30% на электричестве. Расскажу про подводные камни.",
+    text: "Поставил 40 датчиков, автоматизировал отопление и освещение. Экономия 30% на электричестве.",
     tags: ["#УмныйДом"], likes: 18, replies: 11,
   },
 ];
@@ -281,13 +419,10 @@ const channels = ["Все", "#Фундамент", "#УмныйДом", "#Эко
 
 const StroynetContent = ({ onRequestAuth }: { onRequestAuth: () => void }) => {
   const [channel, setChannel] = useState("Все");
-  const [showPostModal, setShowPostModal] = useState(false);
-
   const filtered = channel === "Все" ? postsMock : postsMock.filter((p) => p.tags.includes(channel));
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Channel filters */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
         {channels.map((c) => (
           <button key={c} onClick={() => setChannel(c)}
@@ -298,13 +433,11 @@ const StroynetContent = ({ onRequestAuth }: { onRequestAuth: () => void }) => {
         ))}
       </div>
 
-      {/* Create post */}
       <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30" onClick={onRequestAuth}>
         <Plus className="w-4 h-4 mr-2" /> Создать пост
         <span className="ml-auto text-[10px] text-muted-foreground">Только для зарегистрированных</span>
       </Button>
 
-      {/* Posts */}
       {filtered.map((post) => (
         <div key={post.id} className="glass-card rounded-xl p-4 space-y-2">
           <div className="flex items-center gap-2">
@@ -362,13 +495,12 @@ const PlaceholderContent = ({ section }: { section: string }) => {
 /* ═══════════════════════════════════════════
    CENTER ZONE (MAIN)
    ═══════════════════════════════════════════ */
-const CenterZone = ({ activeSection, onRequestAuth }: CenterZoneProps) => {
-  const [chatSent, setChatSent] = useState(false);
-
+const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole }: CenterZoneProps) => {
   const renderContent = () => {
     switch (activeSection) {
-      case "geo": return <GeoContent />;
-      case "projects": return <ProjectsContent />;
+      case "chat": return <AIChatContent onNavigate={onNavigate} userRole={userRole} />;
+      case "geo": return <GeoContent onNavigate={onNavigate} />;
+      case "projects": return <ProjectsContent onNavigate={onNavigate} />;
       case "stroynet": return <StroynetContent onRequestAuth={onRequestAuth} />;
       default: return <PlaceholderContent section={activeSection} />;
     }
@@ -376,43 +508,26 @@ const CenterZone = ({ activeSection, onRequestAuth }: CenterZoneProps) => {
 
   return (
     <div className="flex-1 min-w-0 flex flex-col gap-4">
-      <h2 className="text-lg font-bold text-foreground px-1">
-        {sectionTitles[activeSection] || "Геоинтеллект"}
-      </h2>
+      {activeSection !== "chat" && (
+        <h2 className="text-lg font-bold text-foreground px-1">
+          {sectionTitles[activeSection] || activeSection}
+        </h2>
+      )}
 
       <div className="flex-1 overflow-y-auto scrollbar-none">
         {renderContent()}
       </div>
 
-      {/* Chat bar */}
-      <div className="glass-card rounded-2xl p-3 flex items-center gap-2 mt-auto">
-        <button className="text-muted-foreground hover:text-primary transition-colors p-1">
-          <Paperclip className="w-4 h-4" />
+      {/* Persistent mini-chat hint for non-chat sections */}
+      {activeSection !== "chat" && (
+        <button
+          onClick={() => onNavigate("chat")}
+          className="glass-card rounded-2xl p-3 flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+        >
+          <Bot className="w-4 h-4 text-primary" />
+          <span>Вернуться к AI-агенту</span>
+          <ArrowRight className="w-3.5 h-3.5 ml-auto" />
         </button>
-        <button className="text-muted-foreground hover:text-primary transition-colors p-1">
-          <Mic className="w-4 h-4" />
-        </button>
-        <Input
-          placeholder="Опишите ваш проект..."
-          className="flex-1 bg-transparent border-0 text-foreground placeholder:text-muted-foreground focus-visible:ring-0 text-sm"
-        />
-        <button onClick={() => setChatSent(true)} className="text-primary hover:text-primary/80 transition-colors p-1">
-          <Send className="w-4 h-4" />
-        </button>
-      </div>
-
-      {chatSent && (
-        <div className="flex gap-2 animate-fade-in">
-          <Button variant="ghost" size="sm" className="glass-card text-foreground text-xs">
-            <MessageSquare className="w-3.5 h-3.5 mr-1" /> Новый чат
-          </Button>
-          <Button variant="ghost" size="sm" className="glass-card text-foreground text-xs">
-            <Clock className="w-3.5 h-3.5 mr-1" /> История
-          </Button>
-          <Button variant="ghost" size="sm" className="glass-card text-foreground text-xs" onClick={onRequestAuth}>
-            <Wand2 className="w-3.5 h-3.5 mr-1" /> 3D Генератор
-          </Button>
-        </div>
       )}
     </div>
   );
