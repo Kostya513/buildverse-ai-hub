@@ -1,13 +1,15 @@
-import { X, LogIn, Info, Settings, CreditCard, Handshake, Shield, HelpCircle } from "lucide-react";
+import { X, LogIn, Home, Info, Settings, CreditCard, Handshake, Shield, HelpCircle } from "lucide-react";
 
 interface SideDrawerProps {
   open: boolean;
   onClose: () => void;
   onAuthClick: () => void;
+  onHomeClick?: () => void;
 }
 
 const menuItems = [
   { icon: LogIn, label: "Вход/Регистрация", action: "auth" },
+  { icon: Home, label: "Главная", action: "home" },
   { icon: Info, label: "О нас" },
   { icon: Settings, label: "Настройки" },
   { icon: CreditCard, label: "Тарифы" },
@@ -16,7 +18,7 @@ const menuItems = [
   { icon: HelpCircle, label: "Помощь" },
 ];
 
-const SideDrawer = ({ open, onClose, onAuthClick }: SideDrawerProps) => {
+const SideDrawer = ({ open, onClose, onAuthClick, onHomeClick }: SideDrawerProps) => {
   if (!open) return null;
 
   return (
@@ -29,7 +31,11 @@ const SideDrawer = ({ open, onClose, onAuthClick }: SideDrawerProps) => {
         {menuItems.map((item) => (
           <button
             key={item.label}
-            onClick={item.action === "auth" ? onAuthClick : onClose}
+            onClick={() => {
+              if (item.action === "auth") { onAuthClick(); }
+              else if (item.action === "home") { onHomeClick?.(); onClose(); }
+              else { onClose(); }
+            }}
             className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-white/10 transition-colors text-left"
           >
             <item.icon className="w-5 h-5 text-primary" />
