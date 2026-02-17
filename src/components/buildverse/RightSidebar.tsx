@@ -1,83 +1,67 @@
-import { Brain, Bell, Calculator, HardHat, Send } from "lucide-react";
+import { Search, Plus, Clock, Mic, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
+
+const chatHistory = [
+  { id: 1, title: "Проект дома в Истре", time: "Сегодня" },
+  { id: 2, title: "Анализ участка 15 соток", time: "Вчера" },
+  { id: 3, title: "Смета на фундамент УШП", time: "3 дня назад" },
+  { id: 4, title: "Подбор подрядчика МО", time: "Неделю назад" },
+];
 
 const RightSidebar = () => {
   return (
-    <aside className="hidden xl:flex flex-col gap-4 w-64 shrink-0 p-2 overflow-y-auto scrollbar-none">
-      {/* AI Assistant */}
-      <div className="glass-card rounded-2xl p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">СтройМакс AI</h3>
-        </div>
-        <div className="space-y-2">
-          <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-muted-foreground">
-            Привет! Я ваш AI-ассистент. Задайте вопрос о строительстве.
-          </div>
-          <div className="bg-primary/10 rounded-lg px-3 py-2 text-xs text-foreground ml-4">
-            Какой фундамент лучше для глинистой почвы?
-          </div>
-          <div className="bg-white/5 rounded-lg px-3 py-2 text-xs text-muted-foreground">
-            Для глинистой почвы рекомендую свайно-ростверковый фундамент. Он обеспечит надёжность при пучении грунта.
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Input placeholder="Спросить..." className="bg-white/10 border-white/15 text-xs h-8 text-foreground placeholder:text-muted-foreground focus-visible:ring-0" />
-          <button className="text-primary hover:text-primary/80 p-1"><Send className="w-4 h-4" /></button>
+    <aside className="hidden xl:flex flex-col gap-3 w-60 shrink-0 p-2 overflow-y-auto scrollbar-none">
+      {/* Header */}
+      <div className="px-2 pt-1">
+        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-primary" />
+          Меню агента
+        </h3>
+      </div>
+
+      {/* Search */}
+      <div className="glass-card rounded-xl p-3 space-y-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по диалогам…"
+            className="bg-white/5 border-white/10 text-xs h-8 pl-8 text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
+          />
         </div>
       </div>
 
-      {/* Notifications */}
-      <div className="glass-card rounded-2xl p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">Уведомления</h3>
-          <span className="ml-auto bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">3</span>
-        </div>
-        <div className="text-xs text-muted-foreground space-y-1.5">
-          <p>• Новый тендер в вашем регионе</p>
-          <p>• Обновление цен на бетон М300</p>
-          <p>• Подрядчик принял заявку</p>
-        </div>
+      {/* New chat */}
+      <button className="glass-card rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-sm text-foreground hover:bg-white/10 transition-colors">
+        <Plus className="w-4 h-4 text-primary" />
+        <span className="font-medium">Новый чат</span>
+      </button>
+
+      {/* Chat history */}
+      <div className="glass-card rounded-xl p-3 space-y-1 flex-1">
+        <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider px-1 mb-2">
+          История чатов
+        </p>
+        {chatHistory.map((chat) => (
+          <button
+            key={chat.id}
+            className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-white/10 transition-colors group"
+          >
+            <p className="text-xs text-foreground truncate group-hover:text-primary transition-colors">
+              {chat.title}
+            </p>
+            <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+              <Clock className="w-2.5 h-2.5" />
+              {chat.time}
+            </p>
+          </button>
+        ))}
       </div>
 
-      {/* Mini estimate */}
-      <div className="glass-card rounded-2xl p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <Calculator className="w-5 h-5 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">Мини-смета</h3>
-        </div>
-        <div className="text-xs space-y-1">
-          <div className="flex justify-between text-muted-foreground"><span>Фундамент</span><span className="text-foreground">2.1 млн</span></div>
-          <div className="flex justify-between text-muted-foreground"><span>Каркас</span><span className="text-foreground">4.8 млн</span></div>
-          <div className="flex justify-between text-muted-foreground"><span>Отделка</span><span className="text-foreground">3.2 млн</span></div>
-          <div className="h-px bg-white/10 my-1" />
-          <div className="flex justify-between font-bold text-foreground"><span>Итого</span><span className="text-primary">10.1 млн ₽</span></div>
-        </div>
-      </div>
-
-      {/* Contractors */}
-      <div className="glass-card rounded-2xl p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <HardHat className="w-5 h-5 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">Подрядчики</h3>
-        </div>
-        <div className="text-xs space-y-2">
-          {[
-            { name: "СтройПро", rating: "4.9", spec: "Фундамент" },
-            { name: "ЭкоДом", rating: "4.7", spec: "Каркас" },
-            { name: "МастерОтделки", rating: "4.8", spec: "Отделка" },
-          ].map((c) => (
-            <div key={c.name} className="flex items-center justify-between">
-              <div>
-                <p className="text-foreground font-medium">{c.name}</p>
-                <p className="text-muted-foreground">{c.spec}</p>
-              </div>
-              <span className="text-primary">★ {c.rating}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Voice mode */}
+      <button className="glass-card rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-sm text-foreground hover:bg-white/10 transition-colors">
+        <Mic className="w-4 h-4 text-primary" />
+        <span className="font-medium">Голосовой режим</span>
+      </button>
     </aside>
   );
 };

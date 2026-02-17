@@ -12,11 +12,13 @@ const Index = () => {
   const [authModal, setAuthModal] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
+  const goHome = () => setActiveSection("chat");
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header onHomeClick={goHome} />
 
-      <div className="flex-1 flex pt-16 pb-20 lg:pb-4 px-2 md:px-4 gap-3 max-w-[1600px] mx-auto w-full">
+      <div className="flex-1 flex pt-16 pb-20 lg:pb-2 px-2 md:px-4 gap-3 max-w-[1600px] mx-auto w-full">
         <LeftLauncher activeId={activeSection} onSelect={setActiveSection} />
         <CenterZone
           activeSection={activeSection}

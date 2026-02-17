@@ -1,20 +1,24 @@
 import {
   Globe, FolderOpen, MessageSquare, Building2, ShoppingCart,
-  HardHat, Calculator, Brain, Home, Bell, Bot,
+  HardHat, Calculator, Home, Bell,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const tiles = [
-  { icon: Bot, label: "AI-агент", id: "chat" },
-  { icon: Globe, label: "Геоинтеллект", id: "geo" },
-  { icon: FolderOpen, label: "Мои проекты", id: "projects" },
-  { icon: MessageSquare, label: "Стройнет", id: "stroynet" },
-  { icon: Building2, label: "Инвестиции", id: "invest" },
-  { icon: ShoppingCart, label: "Маркетплейс", id: "market" },
-  { icon: HardHat, label: "Подрядчики", id: "contractors" },
-  { icon: Calculator, label: "Смета", id: "estimate" },
-  { icon: Brain, label: "СтройМакс", id: "stroymax" },
-  { icon: Home, label: "Цифровой паспорт", id: "passport" },
-  { icon: Bell, label: "Уведомления", id: "notifications" },
+  { icon: Globe, label: "Геоинтеллект", id: "geo", hint: "Геоинтеллект — анализ участка" },
+  { icon: FolderOpen, label: "Мои проекты", id: "projects", hint: "Управление проектами" },
+  { icon: MessageSquare, label: "Стройнет", id: "stroynet", hint: "Стройнет — сообщество" },
+  { icon: Building2, label: "Инвестиции", id: "invest", hint: "Инвестиции — публичные проекты" },
+  { icon: ShoppingCart, label: "Маркетплейс", id: "market", hint: "Маркетплейс — материалы и услуги" },
+  { icon: HardHat, label: "Подрядчики", id: "contractors", hint: "Подрядчики — поиск и найм" },
+  { icon: Calculator, label: "Смета", id: "estimate", hint: "Смета — расчёт бюджета" },
+  { icon: Home, label: "Цифровой паспорт", id: "passport", hint: "Цифровой паспорт здания" },
+  { icon: Bell, label: "Уведомления", id: "notifications", hint: "Уведомления и оповещения" },
 ];
 
 interface LeftLauncherProps {
@@ -24,19 +28,32 @@ interface LeftLauncherProps {
 
 const LeftLauncher = ({ activeId, onSelect }: LeftLauncherProps) => {
   return (
-    <aside className="hidden lg:flex flex-col gap-2 w-60 xl:w-64 shrink-0 p-2 overflow-y-auto scrollbar-none">
-      {tiles.map((tile) => (
-        <button
-          key={tile.id}
-          onClick={() => onSelect(tile.id)}
-          className={`glass-card-hover flex items-center gap-3 px-4 py-3 rounded-xl text-left
-            ${activeId === tile.id ? "border-primary/40 glass-glow" : ""}`}
-        >
-          <tile.icon className={`w-5 h-5 shrink-0 ${activeId === tile.id ? "text-primary" : "text-muted-foreground"}`} />
-          <span className="text-sm font-medium text-foreground truncate">{tile.label}</span>
-        </button>
-      ))}
-    </aside>
+    <TooltipProvider delayDuration={200}>
+      <aside className="hidden lg:flex flex-col items-center gap-2 w-16 shrink-0 py-4 overflow-y-auto scrollbar-none">
+        {tiles.map((tile) => {
+          const isActive = activeId === tile.id;
+          return (
+            <Tooltip key={tile.id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onSelect(tile.id)}
+                  className={`group relative w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300
+                    ${isActive
+                      ? "glass-glow bg-primary/20 border border-primary/40"
+                      : "glass-card hover:bg-white/10 hover:scale-110"
+                    }`}
+                >
+                  <tile.icon className={`w-5 h-5 transition-colors ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="glass-card border-white/15 text-foreground text-xs">
+                {tile.hint}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </aside>
+    </TooltipProvider>
   );
 };
 
