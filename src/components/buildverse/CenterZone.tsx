@@ -12,6 +12,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import StaticPage from "./StaticPage";
+import ProfilePage from "./ProfilePage";
+import { useAuth } from "@/hooks/useAuth";
+import type { useChats } from "@/hooks/useChats";
 
 /* ───── GEO TABS ───── */
 const geoTabs = [
@@ -56,6 +60,7 @@ interface CenterZoneProps {
   onRequestAuth: () => void;
   onNavigate: (id: string) => void;
   userRole?: string | null;
+  chatHook?: ReturnType<typeof useChats>;
 }
 
 const sectionTitles: Record<string, string> = {
@@ -68,6 +73,13 @@ const sectionTitles: Record<string, string> = {
   estimate: "Смета",
   passport: "Цифровой паспорт",
   notifications: "Уведомления",
+  profile: "Профиль",
+  settings: "Настройки",
+  about: "О нас",
+  tariffs: "Тарифы",
+  partners: "Партнёры",
+  privacy: "Конфиденциальность",
+  help: "Помощь",
 };
 
 /* ═══════════════════════════════════════════
@@ -112,7 +124,8 @@ interface ChatMessage {
   button?: { label: string; action: string };
 }
 
-const AIChatContent = ({ onNavigate, userRole }: { onNavigate: (id: string) => void; userRole?: string | null }) => {
+const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: string) => void; userRole?: string | null; chatHook?: ReturnType<typeof useChats> }) => {
+  const { user } = useAuth();
   const greeting = userRole && roleGreetings[userRole]
     ? roleGreetings[userRole]
     : "Помогу спроектировать дом, оценить участок и собрать смету.";
@@ -124,45 +137,73 @@ const AIChatContent = ({ onNavigate, userRole }: { onNavigate: (id: string) => v
     },
   ];
 
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  // Convert DB messages to local format
+  const dbMessages: ChatMessage[] = chatHook?.messages?.map((m) => ({
+    from: m.role === "user" ? "user" as const : "agent" as const,
+    text: m.content,
+  })) || [];
+
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [step, setStep] = useState(0);
   const [showModelPicker, setShowModelPicker] = useState(false);
 
-  const handleSend = () => {
+  // Use DB messages if available, otherwise local
+  const messages = chatHook?.currentChatId && dbMessages.length > 0 ? dbMessages : localMessages;
+
+  const handleSend = async () => {
     if (!input.trim()) return;
     const userMsg: ChatMessage = { from: "user", text: input };
-    const newMessages = [...messages, userMsg];
 
-    if (step === 0) {
-      newMessages.push({
-        from: "agent",
-        text: "Отлично! Я нашёл ваш регион. Давайте я использую Геоинтеллект, чтобы изучить ваш участок — климат, грунт, рельеф, экологию. Это поможет подобрать оптимальный проект.",
-        button: { label: "Открыть Геоинтеллект", action: "geo" },
-      });
-      setStep(1);
-    } else if (step === 1) {
-      newMessages.push({
-        from: "agent",
-        text: "Принял! На основе вашего бюджета я могу подобрать инвестиционные проекты и подрядчиков. Открыть модуль «Инвестиции» или «Подрядчики»?",
-        button: { label: "Открыть Подрядчиков", action: "contractors" },
-      });
-      setStep(2);
+    // If logged in and have chatHook, persist
+    if (user && chatHook) {
+      if (!chatHook.currentChatId) {
+        await chatHook.createChat(input.slice(0, 60));
+      }
+      await chatHook.sendMessage(input, "user");
+
+      // Generate static agent response
+      let agentText = "";
+      if (step === 0) {
+        agentText = "Отлично! Я нашёл ваш регион. Давайте я использую Геоинтеллект, чтобы изучить ваш участок — климат, грунт, рельеф, экологию.";
+        setStep(1);
+      } else if (step === 1) {
+        agentText = "Принял! На основе вашего бюджета я могу подобрать инвестиционные проекты и подрядчиков.";
+        setStep(2);
+      } else {
+        agentText = "Проект можно оформить как цифровой паспорт здания с гарантиями и IoT-данными.";
+      }
+      await chatHook.sendMessage(agentText, "assistant");
     } else {
-      newMessages.push({
-        from: "agent",
-        text: "Проект можно оформить как цифровой паспорт здания с гарантиями и IoT-данными. Создать цифровой паспорт?",
-        button: { label: "Создать цифровой паспорт", action: "passport" },
-      });
+      // Local-only for guests
+      const newMessages = [...localMessages, userMsg];
+      if (step === 0) {
+        newMessages.push({
+          from: "agent",
+          text: "Отлично! Я нашёл ваш регион. Давайте я использую Геоинтеллект, чтобы изучить ваш участок — климат, грунт, рельеф, экологию.",
+          button: { label: "Открыть Геоинтеллект", action: "geo" },
+        });
+        setStep(1);
+      } else if (step === 1) {
+        newMessages.push({
+          from: "agent",
+          text: "Принял! На основе вашего бюджета я могу подобрать инвестиционные проекты и подрядчиков.",
+          button: { label: "Открыть Подрядчиков", action: "contractors" },
+        });
+        setStep(2);
+      } else {
+        newMessages.push({
+          from: "agent",
+          text: "Проект можно оформить как цифровой паспорт здания с гарантиями и IoT-данными.",
+          button: { label: "Создать цифровой паспорт", action: "passport" },
+        });
+      }
+      setLocalMessages(newMessages);
     }
-
-    setMessages(newMessages);
     setInput("");
   };
 
-  const handleChip = (text: string) => {
-    setInput(text);
-  };
+  const handleChip = (text: string) => setInput(text);
 
   const chips = [
     "У меня есть участок, хочу дом",
@@ -1077,10 +1118,18 @@ const PlaceholderContent = ({ section }: { section: string }) => {
 /* ═══════════════════════════════════════════
    CENTER ZONE (MAIN)
    ═══════════════════════════════════════════ */
-const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole }: CenterZoneProps) => {
+const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole, chatHook }: CenterZoneProps) => {
+  const staticPages = ["about", "tariffs", "partners", "privacy", "help"];
+
   const renderContent = () => {
+    if (staticPages.includes(activeSection)) {
+      return <StaticPage slug={activeSection} />;
+    }
+    if (activeSection === "profile") return <ProfilePage />;
+    if (activeSection === "settings") return <ProfilePage />;
+
     switch (activeSection) {
-      case "chat": return <AIChatContent onNavigate={onNavigate} userRole={userRole} />;
+      case "chat": return <AIChatContent onNavigate={onNavigate} userRole={userRole} chatHook={chatHook} />;
       case "geo": return <GeoContent onNavigate={onNavigate} />;
       case "projects": return <ProjectsContent onNavigate={onNavigate} />;
       case "stroynet": return <StroynetContent onRequestAuth={onRequestAuth} />;

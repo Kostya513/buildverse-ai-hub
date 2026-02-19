@@ -1,25 +1,32 @@
-import { X, LogIn, Home, Info, Settings, CreditCard, Handshake, Shield, HelpCircle } from "lucide-react";
+import { X, LogIn, Home, Info, Settings, CreditCard, Handshake, Shield, HelpCircle, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SideDrawerProps {
   open: boolean;
   onClose: () => void;
   onAuthClick: () => void;
   onHomeClick?: () => void;
+  onNavigate?: (section: string) => void;
 }
 
-const menuItems = [
-  { icon: LogIn, label: "Вход/Регистрация", action: "auth" },
-  { icon: Home, label: "Главная", action: "home" },
-  { icon: Info, label: "О нас" },
-  { icon: Settings, label: "Настройки" },
-  { icon: CreditCard, label: "Тарифы" },
-  { icon: Handshake, label: "Партнёры" },
-  { icon: Shield, label: "Конфиденциальность" },
-  { icon: HelpCircle, label: "Помощь" },
-];
+const SideDrawer = ({ open, onClose, onAuthClick, onHomeClick, onNavigate }: SideDrawerProps) => {
+  const { user } = useAuth();
 
-const SideDrawer = ({ open, onClose, onAuthClick, onHomeClick }: SideDrawerProps) => {
   if (!open) return null;
+
+  const menuItems = [
+    ...(!user
+      ? [{ icon: LogIn, label: "Вход / Регистрация", action: "auth" }]
+      : [{ icon: User, label: "Мой профиль", action: "profile" }]
+    ),
+    { icon: Home, label: "Главная", action: "home" },
+    { icon: Info, label: "О нас", action: "about" },
+    { icon: Settings, label: "Настройки", action: "settings" },
+    { icon: CreditCard, label: "Тарифы", action: "tariffs" },
+    { icon: Handshake, label: "Партнёры", action: "partners" },
+    { icon: Shield, label: "Конфиденциальность", action: "privacy" },
+    { icon: HelpCircle, label: "Помощь", action: "help" },
+  ];
 
   return (
     <>
@@ -34,7 +41,7 @@ const SideDrawer = ({ open, onClose, onAuthClick, onHomeClick }: SideDrawerProps
             onClick={() => {
               if (item.action === "auth") { onAuthClick(); }
               else if (item.action === "home") { onHomeClick?.(); onClose(); }
-              else { onClose(); }
+              else { onNavigate?.(item.action); }
             }}
             className="flex items-center gap-3 px-3 py-3 rounded-lg text-foreground hover:bg-white/10 transition-colors text-left"
           >
