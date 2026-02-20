@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import StaticPage from "./StaticPage";
 import ProfilePage from "./ProfilePage";
+import SettingsPage from "./SettingsPage";
 import { useAuth } from "@/hooks/useAuth";
 import type { useChats } from "@/hooks/useChats";
 
@@ -1126,7 +1127,7 @@ const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole, chatHo
       return <StaticPage slug={activeSection} />;
     }
     if (activeSection === "profile") return <ProfilePage />;
-    if (activeSection === "settings") return <ProfilePage />;
+    if (activeSection === "settings") return <SettingsPage />;
 
     switch (activeSection) {
       case "chat": return <AIChatContent onNavigate={onNavigate} userRole={userRole} chatHook={chatHook} />;
