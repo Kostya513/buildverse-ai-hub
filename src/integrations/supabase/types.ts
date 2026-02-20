@@ -73,39 +73,141 @@ export type Database = {
           },
         ]
       }
-      profiles: {
+      notification_preferences: {
         Row: {
-          avatar_url: string | null
-          created_at: string
-          display_name: string | null
+          created_at: string | null
+          digest_frequency: string | null
+          email_finance: boolean | null
+          email_marketing: boolean | null
+          email_projects: boolean | null
+          email_security: boolean | null
+          email_system: boolean | null
           id: string
-          inn: string | null
-          ogrn: string | null
-          role: string
-          updated_at: string
+          push_enabled: boolean | null
+          sms_security: boolean | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          display_name?: string | null
+          created_at?: string | null
+          digest_frequency?: string | null
+          email_finance?: boolean | null
+          email_marketing?: boolean | null
+          email_projects?: boolean | null
+          email_security?: boolean | null
+          email_system?: boolean | null
           id?: string
-          inn?: string | null
-          ogrn?: string | null
-          role?: string
-          updated_at?: string
+          push_enabled?: boolean | null
+          sms_security?: boolean | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
+          created_at?: string | null
+          digest_frequency?: string | null
+          email_finance?: boolean | null
+          email_marketing?: boolean | null
+          email_projects?: boolean | null
+          email_security?: boolean | null
+          email_system?: boolean | null
+          id?: string
+          push_enabled?: boolean | null
+          sms_security?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          accent_color: string | null
+          actual_address: string | null
+          avatar_url: string | null
+          backup_email: string | null
+          bank_account: string | null
+          bank_name: string | null
+          bik: string | null
+          bio: string | null
+          ceo_name: string | null
+          company_name: string | null
+          created_at: string
+          display_name: string | null
+          first_name: string | null
+          id: string
+          inn: string | null
+          kpp: string | null
+          last_name: string | null
+          legal_address: string | null
+          ogrn: string | null
+          phone: string | null
+          portfolio_links: string[] | null
+          profile_visibility: string | null
+          role: string
+          theme: string | null
+          ui_density: string | null
+          updated_at: string
+          user_id: string
+          verification_status: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          actual_address?: string | null
           avatar_url?: string | null
+          backup_email?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          bik?: string | null
+          bio?: string | null
+          ceo_name?: string | null
+          company_name?: string | null
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           id?: string
           inn?: string | null
+          kpp?: string | null
+          last_name?: string | null
+          legal_address?: string | null
           ogrn?: string | null
+          phone?: string | null
+          portfolio_links?: string[] | null
+          profile_visibility?: string | null
           role?: string
+          theme?: string | null
+          ui_density?: string | null
+          updated_at?: string
+          user_id: string
+          verification_status?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          actual_address?: string | null
+          avatar_url?: string | null
+          backup_email?: string | null
+          bank_account?: string | null
+          bank_name?: string | null
+          bik?: string | null
+          bio?: string | null
+          ceo_name?: string | null
+          company_name?: string | null
+          created_at?: string
+          display_name?: string | null
+          first_name?: string | null
+          id?: string
+          inn?: string | null
+          kpp?: string | null
+          last_name?: string | null
+          legal_address?: string | null
+          ogrn?: string | null
+          phone?: string | null
+          portfolio_links?: string[] | null
+          profile_visibility?: string | null
+          role?: string
+          theme?: string | null
+          ui_density?: string | null
           updated_at?: string
           user_id?: string
+          verification_status?: string | null
         }
         Relationships: []
       }
