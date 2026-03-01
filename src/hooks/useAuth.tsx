@@ -10,6 +10,15 @@ interface Profile {
   inn: string | null;
   ogrn: string | null;
   avatar_url: string | null;
+  profile_visibility: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  bio: string | null;
+  company_name: string | null;
+  theme: string | null;
+  accent_color: string | null;
+  ui_density: string | null;
 }
 
 interface AuthContextType {
@@ -21,6 +30,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateProfile: (updates: Partial<Profile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -108,8 +118,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (user) await fetchProfile(user.id);
   };
 
+  const updateProfile = async (updates: Partial<Profile>) => {
+    if (!user) return;
+    await supabase.from("profiles").update(updates).eq("user_id", user.id);
+    await fetchProfile(user.id);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut, refreshProfile, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
