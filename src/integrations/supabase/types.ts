@@ -38,6 +38,69 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_messages: {
+        Row: {
+          created_at: string
+          email: string | null
+          file_urls: string[] | null
+          id: string
+          message: string
+          source: string
+          topic: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          file_urls?: string[] | null
+          id?: string
+          message: string
+          source?: string
+          topic: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          file_urls?: string[] | null
+          id?: string
+          message?: string
+          source?: string
+          topic?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      cookie_preferences: {
+        Row: {
+          analytics: boolean | null
+          created_at: string | null
+          functional: boolean | null
+          id: string
+          marketing: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          analytics?: boolean | null
+          created_at?: string | null
+          functional?: boolean | null
+          id?: string
+          marketing?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          analytics?: boolean | null
+          created_at?: string | null
+          functional?: boolean | null
+          id?: string
+          marketing?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           chat_id: string
@@ -114,6 +177,90 @@ export type Database = {
           push_enabled?: boolean | null
           sms_security?: boolean | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      partner_applications: {
+        Row: {
+          admin_comment: string | null
+          company_name: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          file_urls: string[] | null
+          id: string
+          inn: string | null
+          legal_address: string | null
+          regions: string[]
+          specialization: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_comment?: string | null
+          company_name?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          file_urls?: string[] | null
+          id?: string
+          inn?: string | null
+          legal_address?: string | null
+          regions?: string[]
+          specialization: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_comment?: string | null
+          company_name?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          file_urls?: string[] | null
+          id?: string
+          inn?: string | null
+          legal_address?: string | null
+          regions?: string[]
+          specialization?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      privacy_requests: {
+        Row: {
+          created_at: string
+          details: string | null
+          format: string | null
+          id: string
+          request_type: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          format?: string | null
+          id?: string
+          request_type: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          format?: string | null
+          id?: string
+          request_type?: string
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -232,6 +379,45 @@ export type Database = {
           slug?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          created_at: string
+          email: string
+          file_urls: string[] | null
+          id: string
+          message: string
+          status: string
+          ticket_number: number
+          topic: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          file_urls?: string[] | null
+          id?: string
+          message: string
+          status?: string
+          ticket_number?: number
+          topic: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          file_urls?: string[] | null
+          id?: string
+          message?: string
+          status?: string
+          ticket_number?: number
+          topic?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
