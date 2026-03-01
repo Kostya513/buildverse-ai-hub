@@ -15,6 +15,9 @@ import { Input } from "@/components/ui/input";
 import StaticPage from "./StaticPage";
 import ProfilePage from "./ProfilePage";
 import SettingsPage from "./SettingsPage";
+import PartnersPage from "./PartnersPage";
+import PrivacyPage from "./PrivacyPage";
+import HelpPage from "./HelpPage";
 import { useAuth } from "@/hooks/useAuth";
 import type { useChats } from "@/hooks/useChats";
 
@@ -1120,12 +1123,15 @@ const PlaceholderContent = ({ section }: { section: string }) => {
    CENTER ZONE (MAIN)
    ═══════════════════════════════════════════ */
 const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole, chatHook }: CenterZoneProps) => {
-  const staticPages = ["about", "tariffs", "partners", "privacy", "help"];
+  const staticPages = ["about", "tariffs"];
 
   const renderContent = () => {
     if (staticPages.includes(activeSection)) {
       return <StaticPage slug={activeSection} />;
     }
+    if (activeSection === "partners") return <PartnersPage />;
+    if (activeSection === "privacy") return <PrivacyPage />;
+    if (activeSection === "help") return <HelpPage />;
     if (activeSection === "profile") return <ProfilePage />;
     if (activeSection === "settings") return <SettingsPage />;
 
