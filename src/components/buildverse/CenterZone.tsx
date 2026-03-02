@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  MapPin, Cloud, Mountain, TreePine, Sun, Layers, Plus, Paperclip, Mic, Send,
+  MapPin, Cloud, Mountain, TreePine, Sun, Layers, Plus, Paperclip, Send,
   MessageSquare, Clock, FolderOpen, Heart, ThumbsUp,
   User, Building2, PenTool, ChevronDown, Sparkles, Eye, Bot, ArrowRight,
   Download, RefreshCw, Share2, Copy, FileText, Settings2,
@@ -29,34 +29,6 @@ const geoTabs = [
   { id: "eco", label: "Экосистема", icon: TreePine },
   { id: "sun", label: "Солнце", icon: Sun },
 ];
-
-const geoTabContent: Record<string, { title: string; text: string; ai: string }> = {
-  climate: {
-    title: "Климат региона",
-    text: "Снеговая нагрузка до 200 кг/м² — рекомендуем усиленный кровельный контур. Ветровая нагрузка: III район. Среднегодовая температура: +5.2 °C.",
-    ai: "💡 СтройМакс: При такой снеговой нагрузке оптимален угол ската от 35°. Рассмотрите металлочерепицу с усиленной обрешёткой.",
-  },
-  soil: {
-    title: "Грунт участка",
-    text: "Тип грунта: суглинок средней плотности. УГВ (уровень грунтовых вод): 2.1 м. Несущая способность: 2.5 кг/см². Рекомендация: свайно-ростверковый фундамент.",
-    ai: "💡 СтройМакс: Суглинок склонен к пучению. Рекомендую утеплённую шведскую плиту (УШП) или буронабивные сваи.",
-  },
-  relief: {
-    title: "Рельеф и уклон",
-    text: "Уклон участка: 3.5° (юго-восток). Перепад высот: 1.8 м на 30 м длины. Рекомендация: террасирование или цокольный этаж.",
-    ai: "💡 СтройМакс: Уклон можно использовать для цокольного этажа — экономия до 15% на земляных работах.",
-  },
-  eco: {
-    title: "Экосистема",
-    text: "Зона: лесостепь. Охранные зоны: 50 м до водоёма. Деревья: 12 ед. под охраной. Рекомендация: согласование с экологической экспертизой.",
-    ai: "💡 СтройМакс: Близость водоёма требует проекта ливневой канализации. Учтите СП 42.13330.",
-  },
-  sun: {
-    title: "Инсоляция и солнце",
-    text: "Оптимальная ориентация фасада: юг / юго-восток. Часов солнца летом: 16.2 ч. Потенциал солнечных панелей: высокий (4.8 кВт·ч/м²/день).",
-    ai: "💡 СтройМакс: Расположите гостиную и террасу на юг. Спальни — на восток для мягкого утреннего света.",
-  },
-};
 
 /* ───── SECTION TITLES ───── */
 interface CenterZoneProps {
@@ -87,323 +59,251 @@ const sectionTitles: Record<string, string> = {
 };
 
 /* ═══════════════════════════════════════════
-   MESSAGE ACTIONS BAR
-   ═══════════════════════════════════════════ */
-const MessageActions = () => (
-  <div className="flex items-center gap-1 mt-2 pt-1.5 border-t border-white/5">
-    {[
-      { icon: Download, label: "Скачать" },
-      { icon: RefreshCw, label: "Перегенерировать" },
-      { icon: Share2, label: "Поделиться" },
-      { icon: Copy, label: "Скопировать" },
-      { icon: FileText, label: "Источники" },
-    ].map(({ icon: Icon, label }) => (
-      <button
-        key={label}
-        title={label}
-        className="p-1 rounded hover:bg-white/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-      >
-        <Icon className="w-3 h-3" />
-      </button>
-    ))}
-  </div>
-);
-
-/* ═══════════════════════════════════════════
-   AI CHAT (DEFAULT SCREEN)
+   AI MAIN PAGE (GROK-STYLE)
    ═══════════════════════════════════════════ */
 
-const roleGreetings: Record<string, string> = {
-  private: "Помогу спроектировать ваш дом или дачу — от анализа участка до интерьера.",
-  selfemployed: "Помогу с вашими строительными проектами — от сметы до подбора материалов.",
-  ip: "Помогу собрать пул проектов, сметы и тендеры для вашего бизнеса.",
-  ooo: "Помогу собрать пул проектов, сметы и тендеры для вашего бизнеса.",
-  supplier: "Помогу подключиться к маркетплейсу и находить клиентов в экосистеме.",
-  architect: "Помогу оформить портфолио и работать с 3D-моделями для ваших заказчиков.",
-};
-
-interface ChatMessage {
-  from: "agent" | "user";
+interface AgentResponse {
   text: string;
-  button?: { label: string; action: string };
+  visible: boolean;
 }
 
 const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: string) => void; userRole?: string | null; chatHook?: ReturnType<typeof useChats> }) => {
   const { user } = useAuth();
-  const greeting = userRole && roleGreetings[userRole]
-    ? roleGreetings[userRole]
-    : "Помогу спроектировать дом, оценить участок и собрать смету.";
-
-  const initialMessages: ChatMessage[] = [
-    {
-      from: "agent",
-      text: `Здравствуйте! Я ваш AI-агент BUILDVERSE. ${greeting}\n\nОтветьте на несколько вопросов, и я соберу для вас проект от участка до интерьера:\n\n1. Где находится ваш участок (город/регион)?\n2. Площадь дома (м²) и этажность?\n3. Примерный бюджет?\n4. Готовы использовать типовые решения или хотите максимум индивидуальности?\n5. Насколько важна интеграция с природой и ландшафтом?\n6. Нужен ли дизайн интерьера сразу?`,
-    },
-  ];
-
-  // Convert DB messages to local format
-  const dbMessages: ChatMessage[] = chatHook?.messages?.map((m) => ({
-    from: m.role === "user" ? "user" as const : "agent" as const,
-    text: m.content,
-  })) || [];
-
-  const [localMessages, setLocalMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
-  const [step, setStep] = useState(0);
-  const [showModelPicker, setShowModelPicker] = useState(false);
-
-  // Use DB messages if available, otherwise local
-  const messages = chatHook?.currentChatId && dbMessages.length > 0 ? dbMessages : localMessages;
+  const [responses, setResponses] = useState<AgentResponse[]>([]);
+  const [isThinking, setIsThinking] = useState(false);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
-    const userMsg: ChatMessage = { from: "user", text: input };
+    if (!input.trim() || isThinking) return;
+    const query = input;
+    setInput("");
+    setIsThinking(true);
 
-    // If logged in and have chatHook, persist
+    // Persist to DB if logged in
     if (user && chatHook) {
       if (!chatHook.currentChatId) {
-        await chatHook.createChat(input.slice(0, 60));
+        await chatHook.createChat(query.slice(0, 60));
       }
-      await chatHook.sendMessage(input, "user");
-
-      // Generate static agent response
-      let agentText = "";
-      if (step === 0) {
-        agentText = "Отлично! Я нашёл ваш регион. Давайте я использую Геоинтеллект, чтобы изучить ваш участок — климат, грунт, рельеф, экологию.";
-        setStep(1);
-      } else if (step === 1) {
-        agentText = "Принял! На основе вашего бюджета я могу подобрать инвестиционные проекты и подрядчиков.";
-        setStep(2);
-      } else {
-        agentText = "Проект можно оформить как цифровой паспорт здания с гарантиями и IoT-данными.";
-      }
-      await chatHook.sendMessage(agentText, "assistant");
-    } else {
-      // Local-only for guests
-      const newMessages = [...localMessages, userMsg];
-      if (step === 0) {
-        newMessages.push({
-          from: "agent",
-          text: "Отлично! Я нашёл ваш регион. Давайте я использую Геоинтеллект, чтобы изучить ваш участок — климат, грунт, рельеф, экологию.",
-          button: { label: "Открыть Геоинтеллект", action: "geo" },
-        });
-        setStep(1);
-      } else if (step === 1) {
-        newMessages.push({
-          from: "agent",
-          text: "Принял! На основе вашего бюджета я могу подобрать инвестиционные проекты и подрядчиков.",
-          button: { label: "Открыть Подрядчиков", action: "contractors" },
-        });
-        setStep(2);
-      } else {
-        newMessages.push({
-          from: "agent",
-          text: "Проект можно оформить как цифровой паспорт здания с гарантиями и IoT-данными.",
-          button: { label: "Создать цифровой паспорт", action: "passport" },
-        });
-      }
-      setLocalMessages(newMessages);
+      await chatHook.sendMessage(query, "user");
     }
-    setInput("");
+
+    // Simulate agent response with fade-in
+    setTimeout(() => {
+      const agentText = `Анализирую ваш запрос: «${query}»\n\nДля полной работы с вашим проектом мне потребуется:\n\n• Геоинтеллект — анализ участка\n• BIM Studio — проектирование\n• Смета — расчёт бюджета\n\nЭти инструменты готовы к работе в экосистеме. Выберите сервис в боковом меню или уточните задачу.`;
+
+      if (user && chatHook) {
+        chatHook.sendMessage(agentText, "assistant");
+      }
+
+      setResponses((prev) => [...prev, { text: agentText, visible: false }]);
+      // Trigger fade-in
+      requestAnimationFrame(() => {
+        setResponses((prev) => prev.map((r, i) => i === prev.length - 1 ? { ...r, visible: true } : r));
+      });
+      setIsThinking(false);
+    }, 1200);
   };
 
-  const handleChip = (text: string) => setInput(text);
-
-  const chips = [
-    "У меня есть участок, хочу дом",
-    "Только планирую покупку участка",
-    "Я девелопер, мне нужны несколько домов",
-  ];
-
   return (
-    <div className="flex flex-col h-full animate-fade-in">
-      {/* Hero — minimal branding */}
-      <div className="text-center mb-6 pt-2">
-        <div className="inline-flex items-center gap-2.5 mb-2">
-          <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-primary" />
-          </div>
-          <h2 className="text-base font-bold text-foreground tracking-wide">BUILDVERSE AI</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Не просто чат. Это ваш личный AI-архитектор и девелопер.
-        </p>
-        <p className="text-[11px] text-muted-foreground/60 mt-1 max-w-md mx-auto">
-          Он анализирует участок, считает смету, подбирает материалы и помогает вписать дом в природу — от фундамента до декора.
-        </p>
+    <div className="flex flex-col h-full items-center justify-center relative">
+      {/* Premium logo */}
+      <div className="mb-12 text-center animate-fade-in">
+        <h1 className="text-4xl md:text-5xl font-black tracking-[0.15em]">
+          <span className="bg-gradient-to-r from-emerald-400 via-primary to-amber-400 bg-clip-text text-transparent">
+            BUILDVERSE
+          </span>
+        </h1>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto scrollbar-none space-y-4 mb-3 px-1">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-line ${
-              msg.from === "user"
-                ? "bg-primary/20 text-foreground ml-4"
-                : "bg-white/5 text-muted-foreground mr-4"
-            }`}>
-              {msg.text}
-              {msg.button && (
-                <Button
-                  size="sm"
-                  className="mt-3 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 w-full"
-                  onClick={() => onNavigate(msg.button!.action)}
-                >
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                  {msg.button.label}
-                </Button>
-              )}
-              {msg.from === "agent" && <MessageActions />}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Chips */}
-      {step === 0 && (
-        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-2 px-1">
-          {chips.map((c) => (
-            <button
-              key={c}
-              onClick={() => handleChip(c)}
-              className="glass-card px-3 py-1.5 rounded-full text-xs text-muted-foreground hover:text-primary hover:border-primary/30 whitespace-nowrap transition-all"
+      {/* Agent responses - fade in on background */}
+      {responses.length > 0 && (
+        <div className="w-full max-w-2xl mb-8 space-y-4 px-4">
+          {responses.map((r, i) => (
+            <div
+              key={i}
+              className={`glass-card rounded-2xl p-6 transition-all duration-700 ease-out ${
+                r.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
             >
-              {c}
-            </button>
+              <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{r.text}</p>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Universal input bar */}
-      <div className="glass-card rounded-2xl p-3 flex items-center gap-2 relative">
-        <button className="text-muted-foreground hover:text-primary transition-colors p-1" title="Добавить файл">
-          <Paperclip className="w-4 h-4" />
-        </button>
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Опишите задачу или ваш строительный проект…"
-          className="flex-1 bg-transparent border-0 text-foreground placeholder:text-muted-foreground focus-visible:ring-0 text-sm"
-        />
-        {/* Model picker */}
-        <div className="relative">
-          <button
-            onClick={() => setShowModelPicker(!showModelPicker)}
-            className="text-muted-foreground hover:text-primary transition-colors p-1 flex items-center gap-1 text-[10px]"
-            title="Выбор модели"
-          >
-            <Settings2 className="w-3.5 h-3.5" />
-            <ChevronDown className="w-2.5 h-2.5" />
+      {/* Greeting */}
+      {responses.length === 0 && (
+        <p className="text-muted-foreground text-sm md:text-base mb-8 text-center animate-fade-in max-w-lg px-4">
+          Расскажите о вашем проекте — от идеи до реальности.
+        </p>
+      )}
+
+      {/* Central input */}
+      <div className="w-full max-w-2xl px-4 animate-fade-in">
+        <div className="glass-card glass-glow rounded-2xl p-4 flex items-center gap-3 border border-white/15">
+          <button className="text-muted-foreground hover:text-primary transition-colors p-1 shrink-0" title="Добавить файл">
+            <Paperclip className="w-5 h-5" />
           </button>
-          {showModelPicker && (
-            <div className="absolute bottom-full right-0 mb-2 glass-card rounded-xl p-2 min-w-[140px] space-y-0.5 z-50">
-              {["BUILDVERSE Pro", "BUILDVERSE Lite", "BUILDVERSE 3D"].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setShowModelPicker(false)}
-                  className="w-full text-left px-3 py-1.5 rounded-lg text-xs text-foreground hover:bg-white/10 transition-colors"
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="Опишите ваш строительный проект…"
+            className="flex-1 bg-transparent border-0 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 text-base"
+          />
+          {isThinking ? (
+            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+          ) : (
+            <button onClick={handleSend} className="text-primary hover:text-primary/80 transition-colors p-1 shrink-0" title="Отправить">
+              <Send className="w-5 h-5" />
+            </button>
           )}
         </div>
-        <button className="text-muted-foreground hover:text-primary transition-colors p-1" title="Голосовой ввод">
-          <Mic className="w-4 h-4" />
-        </button>
-        <button onClick={handleSend} className="text-primary hover:text-primary/80 transition-colors p-1" title="Отправить">
-          <Send className="w-4 h-4" />
-        </button>
       </div>
     </div>
   );
 };
 
 /* ═══════════════════════════════════════════
-   GEO CONTENT
+   GEO CONTENT (INTERACTIVE MAP)
    ═══════════════════════════════════════════ */
 const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
   const [activeTab, setActiveTab] = useState("climate");
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const tab = geoTabContent[activeTab];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pinPlaced, setPinPlaced] = useState(false);
+  const [analysisStarted, setAnalysisStarted] = useState(false);
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      setPinPlaced(true);
+      setAnalysisStarted(false);
+    }
+  };
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="glass-card rounded-xl p-3 border border-primary/20 flex items-start gap-2">
-        <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-        <p className="text-xs text-muted-foreground">
-          Эти данные использует ваш AI-агент, чтобы проект соответствовал климату, грунту и нормам.
+    <div className="space-y-5 animate-fade-in">
+      {/* Header */}
+      <div className="space-y-2">
+        <h2 className="text-2xl font-black text-foreground tracking-wide">Геоинтеллект</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Превращает любой участок в точную цифровую основу BIM-проекта за секунды
         </p>
       </div>
 
-      <div className="glass-card rounded-2xl h-52 md:h-64 flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/5" />
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: "radial-gradient(circle at 30% 40%, hsl(var(--primary)) 1px, transparent 1px), radial-gradient(circle at 70% 60%, hsl(var(--primary)) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }} />
-        <div className="text-center relative z-10">
-          <MapPin className="w-10 h-10 text-primary mx-auto mb-2 opacity-80" />
-          <p className="text-muted-foreground text-sm">Интерактивная карта участка</p>
-          <p className="text-muted-foreground/60 text-xs mt-1">Московская область, Истринский р-н</p>
-        </div>
+      {/* Search bar */}
+      <div className="glass-card rounded-2xl p-3 flex items-center gap-2">
+        <Search className="w-5 h-5 text-muted-foreground shrink-0" />
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          placeholder="Введите адрес или кадастровый номер участка"
+          className="flex-1 bg-transparent border-0 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 text-sm"
+        />
+        <Button
+          size="sm"
+          onClick={handleSearch}
+          className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs shrink-0"
+        >
+          Найти
+        </Button>
       </div>
 
-      <Button variant="ghost" className="w-full glass-card text-foreground text-sm hover:glass-glow" onClick={() => setShowAnalysis(!showAnalysis)}>
-        <Eye className="w-4 h-4 mr-2 text-primary" />
-        {showAnalysis ? "Скрыть пример анализа" : "Посмотреть пример анализа участка"}
-      </Button>
-
-      {showAnalysis && (
-        <div className="glass-card rounded-2xl p-4 space-y-2 animate-fade-in border border-primary/20">
-          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" /> Демо-анализ: Участок 15 соток, Истра
-          </h4>
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>🌡 Климат: снеговая нагрузка 180 кг/м², ветер III зона</p>
-            <p>🪨 Грунт: суглинок, УГВ 2.1 м → свайно-ростверковый фундамент</p>
-            <p>⛰ Рельеф: уклон 3.5° ЮВ → рекомендован цокольный этаж</p>
-            <p>☀ Солнце: фасад на юг, потенциал солнечных панелей — высокий</p>
-            <p>🌿 Эко: 50 м до водоёма, 12 деревьев под охраной</p>
+      {/* Interactive map */}
+      <div className="glass-card rounded-2xl overflow-hidden relative" style={{ height: "400px" }}>
+        {pinPlaced ? (
+          <iframe
+            src="https://yandex.ru/map-widget/v1/?ll=37.617700%2C55.755864&z=12&l=map"
+            width="100%"
+            height="100%"
+            frameBorder="0"
+            allowFullScreen
+            className="absolute inset-0"
+            title="Яндекс Карта"
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5" />
+            <div className="absolute inset-0 opacity-10" style={{
+              backgroundImage: "radial-gradient(circle at 30% 40%, hsl(var(--primary)) 1px, transparent 1px), radial-gradient(circle at 70% 60%, hsl(var(--primary)) 1px, transparent 1px)",
+              backgroundSize: "60px 60px",
+            }} />
+            <MapPin className="w-12 h-12 text-muted-foreground/30 mb-3 relative z-10" />
+            <p className="text-sm text-muted-foreground/50 relative z-10">Выберите участок для запуска анализа</p>
           </div>
-          <p className="text-xs text-primary italic">ИИ-рекомендация: 2-этажный каркасный дом, УШП, ориентация ЮВ</p>
-        </div>
+        )}
+        {/* Pin overlay */}
+        {pinPlaced && (
+          <div className="absolute top-3 left-3 z-10 glass-card rounded-xl px-3 py-2 text-xs text-foreground flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-primary" />
+            <span>{searchQuery}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Launch analysis button */}
+      {pinPlaced && !analysisStarted && (
+        <Button
+          className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 h-12 text-sm font-semibold"
+          onClick={() => setAnalysisStarted(true)}
+        >
+          <Sparkles className="w-4 h-4 mr-2" />
+          Запустить анализ выбранного участка
+        </Button>
       )}
 
-      <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+      {/* 5 Tabs */}
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
         {geoTabs.map((t) => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all
-              ${activeTab === t.id ? "bg-primary/20 text-primary border border-primary/30" : "glass-card text-muted-foreground hover:text-foreground"}`}>
-            <t.icon className="w-3.5 h-3.5" />
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all
+              ${activeTab === t.id
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "glass-card text-muted-foreground hover:text-foreground hover:bg-white/10"
+              }`}>
+            <t.icon className="w-4 h-4" />
             {t.label}
           </button>
         ))}
       </div>
 
-      <div className="glass-card rounded-xl p-4 space-y-2 animate-fade-in">
-        <h4 className="text-sm font-bold text-foreground">{tab.title}</h4>
-        <p className="text-xs text-muted-foreground leading-relaxed">{tab.text}</p>
-        <p className="text-xs text-primary/80 italic mt-2">{tab.ai}</p>
+      {/* Tab content panel */}
+      <div className="glass-card rounded-2xl p-6 min-h-[120px] flex items-center justify-center animate-fade-in">
+        {analysisStarted ? (
+          <div className="text-center space-y-2">
+            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+            <p className="text-sm text-muted-foreground">Анализ будет выполнен после подключения AI-агента.</p>
+            <p className="text-xs text-muted-foreground/50">Данные автоматически передадутся в BIM Studio</p>
+          </div>
+        ) : (
+          <div className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Анализ будет выполнен после подключения AI-агента.
+            </p>
+            <p className="text-xs text-muted-foreground/50">
+              Данные автоматически передадутся в BIM Studio
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="glass-card rounded-xl p-4 space-y-2">
-        <h4 className="text-sm font-bold text-foreground">Что делает Геоинтеллект</h4>
-        <ul className="text-xs text-muted-foreground space-y-1.5">
-          <li>🌡 Анализирует климат (температура, снеговая и ветровая нагрузка)</li>
-          <li>🪨 Анализирует грунт (тип, УГВ, рекомендации по фундаменту)</li>
-          <li>⛰ Учитывает рельеф и уклон участка</li>
-          <li>☀ Помогает выбрать ориентацию дома по солнцу</li>
-          <li>🌿 Показывает экологические ограничения и возможности</li>
-        </ul>
+      {/* Bottom buttons */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Button
+          className="w-full glass-card hover:glass-glow text-foreground border border-white/15 h-12 text-sm"
+          variant="ghost"
+        >
+          <Download className="w-4 h-4 mr-2 text-primary" />
+          Экспортировать все данные в мой проект
+        </Button>
+        <Button
+          className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 h-12 text-sm"
+          onClick={() => onNavigate("chat")}
+        >
+          <Bot className="w-4 h-4 mr-2" />
+          Передать данные центральному AI-агенту для создания полного BIM
+        </Button>
       </div>
-
-      <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30" onClick={() => onNavigate("chat")}>
-        <Plus className="w-4 h-4 mr-2" />
-        Создать проект через AI-агента
-      </Button>
     </div>
   );
 };
@@ -781,7 +681,6 @@ const InvestContent = () => {
         AI‑агент BUILDVERSE может подобрать проекты под ваш бюджет и регион.
       </p>
 
-      {/* Filters */}
       <div className="glass-card rounded-xl p-3 flex items-center gap-2 flex-wrap">
         <select value={regionF} onChange={(e) => setRegionF(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
           {investRegions.map((r) => <option key={r} value={r}>{r === "Все" ? "Регион" : r}</option>)}
@@ -798,7 +697,6 @@ const InvestContent = () => {
         <Plus className="w-3.5 h-3.5 mr-1" /> Создать проект / тендер
       </Button>
 
-      {/* Project cards */}
       {filtered.map((p) => (
         <div key={p.id} className="glass-card rounded-xl p-4 space-y-3">
           <div className="flex items-start justify-between">
@@ -822,7 +720,6 @@ const InvestContent = () => {
         </div>
       ))}
 
-      {/* Create project modal */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="glass-card border-white/10 bg-background/95 max-w-md">
           <DialogHeader>
@@ -874,7 +771,6 @@ const InvestContent = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Apply modal */}
       <Dialog open={!!applyTo} onOpenChange={() => setApplyTo(null)}>
         <DialogContent className="glass-card border-white/10 bg-background/95 max-w-sm">
           <DialogHeader>
@@ -920,30 +816,24 @@ const InvestContent = () => {
    CONTRACTORS
    ═══════════════════════════════════════════ */
 const contractorsMock = [
-  { id: 1, name: "ООО «ФундаментПро»", rating: 4.9, reviews: 87, tags: ["Фундамент", "Земляные работы"], region: "Москва", online: true, about: "Специализируемся на монолитных фундаментах и свайных полях. 15 лет на рынке, 400+ объектов.", specs: ["Монолитный фундамент", "УШП", "Свайное поле", "Земляные работы"], portfolio: ["Коттедж 250 м², Истра", "ЖК «Сосны», 12 домов", "Склад 1200 м², Химки", "Таунхаус 180 м², Одинцово"], reviewsList: [{ author: "Алексей К.", text: "Отличная работа, фундамент без нареканий 5 лет." }, { author: "Ирина М.", text: "Быстро, качественно, по смете." }] },
-  { id: 2, name: "СК «МонолитСтрой»", rating: 4.7, reviews: 56, tags: ["Каркас", "Коробка"], region: "МО", online: true, about: "Строим коробки домов из газобетона и монолитного каркаса. Гарантия 10 лет.", specs: ["Газобетон", "Монолитный каркас", "Кирпичная кладка"], portfolio: ["Дом 320 м², Красногорск", "Дуплекс 200 м², Мытищи", "Коттедж 180 м², Домодедово"], reviewsList: [{ author: "Пётр В.", text: "Построили коробку за 3 месяца, доволен результатом." }, { author: "Ольга С.", text: "Профессиональная команда, рекомендую." }] },
-  { id: 3, name: "ИП Сидоров — Инженерия", rating: 4.8, reviews: 34, tags: ["Инженерия", "Отопление"], region: "СПб", online: false, about: "Проектирование и монтаж инженерных систем: отопление, водоснабжение, канализация, вентиляция.", specs: ["Отопление", "Водоснабжение", "Канализация", "Вентиляция"], portfolio: ["Коттедж 280 м², Пушкин", "Таунхаус 150 м², Ломоносов"], reviewsList: [{ author: "Дмитрий Л.", text: "Грамотный подход к проектированию, всё работает идеально." }] },
-  { id: 4, name: "«АртОтделка»", rating: 4.6, reviews: 42, tags: ["Отделка", "Декор"], region: "Москва", online: true, about: "Премиальная чистовая отделка и декор интерьеров. Работаем с дизайнерами и архитекторами.", specs: ["Штукатурка", "Покраска", "Плитка", "Паркет", "Декоративные покрытия"], portfolio: ["Пентхаус 200 м², Москва-Сити", "Квартира 120 м², Хамовники", "Загородный дом 350 м², Рублёвка", "Ресторан 180 м², Патрики"], reviewsList: [{ author: "Наталья Р.", text: "Безупречная отделка, внимание к деталям." }, { author: "Сергей К.", text: "Дорого, но стоит каждого рубля." }] },
+  { id: 1, name: "СтройГрад", specialization: "Фундаментные работы", rating: 4.8, reviews: 47, region: "Москва", experience: "12 лет", verified: true, price: "от 120 000 ₽" },
+  { id: 2, name: "ЭкоСтрой", specialization: "Отделка", rating: 4.5, reviews: 23, region: "МО", experience: "8 лет", verified: true, price: "от 80 000 ₽" },
+  { id: 3, name: "Инженерные решения", specialization: "Инженерия", rating: 4.9, reviews: 62, region: "СПб", experience: "15 лет", verified: true, price: "от 200 000 ₽" },
+  { id: 4, name: "КаркасПро", specialization: "Каркасные дома", rating: 4.6, reviews: 31, region: "Москва", experience: "10 лет", verified: false, price: "от 150 000 ₽" },
 ];
 
+const contractorWorkTypes = ["Все", "Фундаментные работы", "Отделка", "Инженерия", "Каркасные дома"];
 const contractorRegions = ["Все", "Москва", "МО", "СПб"];
-const contractorWorkTypes = ["Все", "Фундамент", "Каркас", "Коробка", "Инженерия", "Отделка", "Декор"];
-const contractorRatings = ["Любой", "4.0+", "4.5+", "4.8+"];
 
 const ContractorsContent = () => {
+  const [workType, setWorkType] = useState("Все");
   const [regionF, setRegionF] = useState("Все");
-  const [workF, setWorkF] = useState("Все");
-  const [ratingF, setRatingF] = useState("Любой");
-  const [profile, setProfile] = useState<typeof contractorsMock[0] | null>(null);
   const [inviteTo, setInviteTo] = useState<typeof contractorsMock[0] | null>(null);
   const [inviteDone, setInviteDone] = useState(false);
 
-  const minRating = ratingF === "4.0+" ? 4.0 : ratingF === "4.5+" ? 4.5 : ratingF === "4.8+" ? 4.8 : 0;
-
   const filtered = contractorsMock.filter((c) => {
+    if (workType !== "Все" && c.specialization !== workType) return false;
     if (regionF !== "Все" && c.region !== regionF) return false;
-    if (workF !== "Все" && !c.tags.includes(workF)) return false;
-    if (c.rating < minRating) return false;
     return true;
   });
 
@@ -951,108 +841,48 @@ const ContractorsContent = () => {
     <div className="space-y-4 animate-fade-in">
       <p className="text-xs text-muted-foreground/70 flex items-center gap-1.5">
         <Sparkles className="w-3.5 h-3.5 text-primary" />
-        AI‑агент может рекомендовать подрядчиков под ваш проект и бюджет.
+        AI‑агент BUILDVERSE подбирает подрядчиков под ваш проект, регион и бюджет.
       </p>
 
-      {/* Filters */}
       <div className="glass-card rounded-xl p-3 flex items-center gap-2 flex-wrap">
+        <select value={workType} onChange={(e) => setWorkType(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
+          {contractorWorkTypes.map((w) => <option key={w} value={w}>{w === "Все" ? "Тип работ" : w}</option>)}
+        </select>
         <select value={regionF} onChange={(e) => setRegionF(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
           {contractorRegions.map((r) => <option key={r} value={r}>{r === "Все" ? "Регион" : r}</option>)}
         </select>
-        <select value={workF} onChange={(e) => setWorkF(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
-          {contractorWorkTypes.map((w) => <option key={w} value={w}>{w === "Все" ? "Тип работ" : w}</option>)}
-        </select>
-        <select value={ratingF} onChange={(e) => setRatingF(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
-          {contractorRatings.map((r) => <option key={r} value={r}>{r === "Любой" ? "Мин. рейтинг" : r}</option>)}
-        </select>
       </div>
 
-      {/* Contractor cards */}
       {filtered.map((c) => (
-        <div key={c.id} className="glass-card rounded-xl p-4 space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-              <Wrench className="w-5 h-5 text-primary" />
+        <div key={c.id} className="glass-card rounded-xl p-4 space-y-2">
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                {c.name}
+                {c.verified && <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">✓ Верифицирован</span>}
+              </h4>
+              <p className="text-[11px] text-muted-foreground">{c.specialization} • {c.region} • {c.experience}</p>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-foreground truncate">{c.name}</h4>
-                <span className={`w-2 h-2 rounded-full shrink-0 ${c.online ? "bg-green-400" : "bg-muted-foreground/40"}`} title={c.online ? "Онлайн" : "Офлайн"} />
+            <div className="text-right">
+              <div className="flex items-center gap-1 text-xs">
+                <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                <span className="text-foreground font-bold">{c.rating}</span>
+                <span className="text-muted-foreground">({c.reviews})</span>
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                <span className="text-xs text-foreground">{c.rating}</span>
-                <span className="text-[11px] text-muted-foreground">/ {c.reviews} отзывов</span>
-              </div>
+              <p className="text-xs text-primary font-medium mt-0.5">{c.price}</p>
             </div>
-          </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {c.tags.map((t) => (
-              <span key={t} className="text-[11px] text-primary bg-primary/10 px-2 py-0.5 rounded-full">{t}</span>
-            ))}
-            <span className="text-[11px] text-muted-foreground bg-white/5 px-2 py-0.5 rounded-full">{c.region}</span>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" className="flex-1 glass-card text-foreground text-xs" onClick={() => setProfile(c)}>
-              <Eye className="w-3.5 h-3.5 mr-1" /> Профиль
+            <Button size="sm" className="flex-1 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs"
+              onClick={() => { setInviteTo(c); setInviteDone(false); }}>
+              <Wrench className="w-3.5 h-3.5 mr-1" /> Пригласить
             </Button>
-            <Button size="sm" className="flex-1 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs" onClick={() => { setInviteTo(c); setInviteDone(false); }}>
-              <Send className="w-3.5 h-3.5 mr-1" /> Пригласить
+            <Button variant="ghost" size="sm" className="flex-1 glass-card text-foreground text-xs">
+              <MessageSquare className="w-3.5 h-3.5 mr-1" /> Написать
             </Button>
           </div>
         </div>
       ))}
-
-      {/* Profile modal */}
-      <Dialog open={!!profile} onOpenChange={() => setProfile(null)}>
-        <DialogContent className="glass-card border-white/10 bg-background/95 max-w-md max-h-[80vh] overflow-y-auto">
-          {profile && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-foreground flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center"><Wrench className="w-4 h-4 text-primary" /></div>
-                  {profile.name}
-                </DialogTitle>
-                <DialogDescription className="flex items-center gap-2">
-                  <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" /> {profile.rating} • {profile.reviews} отзывов • {profile.region}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <h5 className="text-xs font-bold text-foreground mb-1">О компании</h5>
-                  <p className="text-xs text-muted-foreground">{profile.about}</p>
-                </div>
-                <div>
-                  <h5 className="text-xs font-bold text-foreground mb-1">Специализация</h5>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {profile.specs.map((s) => <span key={s} className="text-[11px] text-primary bg-primary/10 px-2 py-0.5 rounded-full">{s}</span>)}
-                  </div>
-                </div>
-                <div>
-                  <h5 className="text-xs font-bold text-foreground mb-1">Портфолио</h5>
-                  <div className="grid grid-cols-2 gap-2">
-                    {profile.portfolio.map((p, i) => (
-                      <div key={i} className="glass-card rounded-lg p-2 text-xs text-muted-foreground">{p}</div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h5 className="text-xs font-bold text-foreground mb-1">Отзывы</h5>
-                  {profile.reviewsList.map((r, i) => (
-                    <div key={i} className="glass-card rounded-lg p-3 mb-2">
-                      <p className="text-xs font-medium text-foreground">{r.author}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{r.text}</p>
-                    </div>
-                  ))}
-                </div>
-                <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30" onClick={() => { setProfile(null); setInviteTo(profile); setInviteDone(false); }}>
-                  <Send className="w-4 h-4 mr-2" /> Пригласить в проект
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Invite modal */}
       <Dialog open={!!inviteTo} onOpenChange={() => setInviteTo(null)}>

@@ -44,11 +44,13 @@ const Index = () => {
           userRole={profile?.role}
           chatHook={chatHook}
         />
-        <RightSidebar
-          onNewChat={handleNewChat}
-          onSelectChat={handleSelectChat}
-          currentChatId={chatHook.currentChatId}
-        />
+        {activeSection !== "chat" && (
+          <RightSidebar
+            onNewChat={handleNewChat}
+            onSelectChat={handleSelectChat}
+            currentChatId={chatHook.currentChatId}
+          />
+        )}
       </div>
 
       <Footer />
