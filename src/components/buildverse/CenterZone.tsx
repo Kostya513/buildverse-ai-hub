@@ -955,12 +955,14 @@ const PlaceholderContent = ({ section }: { section: string }) => {
    CENTER ZONE (MAIN)
    ═══════════════════════════════════════════ */
 const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole, chatHook }: CenterZoneProps) => {
-  const staticPages = ["about", "tariffs"];
+  const staticPages = ["about"];
 
   const renderContent = () => {
     if (staticPages.includes(activeSection)) {
       return <StaticPage slug={activeSection} />;
     }
+    if (activeSection === "tariffs") return <PricingPage />;
+    if (activeSection === "estimate") return <EstimatePage onNavigate={onNavigate} />;
     if (activeSection === "partners") return <PartnersPage />;
     if (activeSection === "privacy") return <PrivacyPage />;
     if (activeSection === "help") return <HelpPage />;
