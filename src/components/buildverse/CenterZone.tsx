@@ -20,6 +20,7 @@ import PrivacyPage from "./PrivacyPage";
 import HelpPage from "./HelpPage";
 import PricingPage from "./PricingPage";
 import EstimatePage from "./EstimatePage";
+import DigitalPassportPage from "./DigitalPassportPage";
 import { useAuth } from "@/hooks/useAuth";
 import type { useChats } from "@/hooks/useChats";
 
