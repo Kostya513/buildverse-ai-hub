@@ -966,6 +966,7 @@ const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole, chatHo
     if (activeSection === "tariffs") return <PricingPage />;
     if (activeSection === "estimate") return <EstimatePage onNavigate={onNavigate} />;
     if (activeSection === "passport") return <DigitalPassportPage onNavigate={onNavigate} />;
+    if (activeSection === "notifications") return <NotificationsPage onNavigate={onNavigate} />;
     if (activeSection === "partners") return <PartnersPage />;
     if (activeSection === "privacy") return <PrivacyPage />;
     if (activeSection === "help") return <HelpPage />;
