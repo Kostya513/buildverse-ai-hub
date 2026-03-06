@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import {
   MapPin, Cloud, Mountain, TreePine, Sun, Layers, Plus, Paperclip, Send,
   MessageSquare, Clock, FolderOpen, Heart, ThumbsUp,
   User, Building2, PenTool, ChevronDown, Sparkles, Eye, Bot, ArrowRight,
   Download, RefreshCw, Share2, Copy, FileText, Settings2,
   ShoppingCart, X, Star, Briefcase, TrendingUp, Filter, Package, Wrench, Truck, Search,
+  Mic, ThumbsDown, Volume2,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,8 @@ import DigitalPassportPage from "./DigitalPassportPage";
 import NotificationsPage from "./NotificationsPage";
 import { useAuth } from "@/hooks/useAuth";
 import type { useChats } from "@/hooks/useChats";
+
+const Viewer3D = lazy(() => import("./Viewer3D"));
 
 /* ───── GEO TABS ───── */
 const geoTabs = [
@@ -63,7 +66,7 @@ const sectionTitles: Record<string, string> = {
 };
 
 /* ═══════════════════════════════════════════
-   AI MAIN PAGE (GROK-STYLE)
+   AI MAIN PAGE — 3D VIEWER + CHAT SPLIT
    ═══════════════════════════════════════════ */
 
 interface AgentResponse {
@@ -76,12 +79,20 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
   const [input, setInput] = useState("");
   const [responses, setResponses] = useState<AgentResponse[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [overlayText, setOverlayText] = useState("");
+  const [overlayActions, setOverlayActions] = useState(false);
 
   const handleSend = async () => {
     if (!input.trim() || isThinking) return;
     const query = input;
     setInput("");
     setIsThinking(true);
+
+    // Step 1: Show overlay with pulsing logo
+    setOverlayVisible(true);
+    setOverlayText("");
+    setOverlayActions(false);
 
     // Persist to DB if logged in
     if (user && chatHook) {
@@ -91,77 +102,174 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
       await chatHook.sendMessage(query, "user");
     }
 
-    // Simulate agent response with fade-in
+    // Step 2-3: After "processing", show response text on overlay
     setTimeout(() => {
-      const agentText = `Анализирую ваш запрос: «${query}»\n\nДля полной работы с вашим проектом мне потребуется:\n\n• Геоинтеллект — анализ участка\n• BIM Studio — проектирование\n• Смета — расчёт бюджета\n\nЭти инструменты готовы к работе в экосистеме. Выберите сервис в боковом меню или уточните задачу.`;
+      const agentText = `Анализирую ваш запрос: «${query}»\n\nДля полной работы с вашим проектом мне потребуется:\n\n• Геоинтеллект — анализ участка\n• BIM Studio — 3D-моделирование\n• Смета — расчёт бюджета\n\nЭти инструменты готовы к работе в экосистеме. Выберите сервис в боковом меню или уточните задачу.`;
 
       if (user && chatHook) {
         chatHook.sendMessage(agentText, "assistant");
       }
 
-      setResponses((prev) => [...prev, { text: agentText, visible: false }]);
-      // Trigger fade-in
-      requestAnimationFrame(() => {
-        setResponses((prev) => prev.map((r, i) => i === prev.length - 1 ? { ...r, visible: true } : r));
-      });
+      // Animate text appearing
+      setOverlayText(agentText);
+      setOverlayActions(true);
+
+      setResponses((prev) => [...prev, { text: agentText, visible: true }]);
       setIsThinking(false);
-    }, 1200);
+
+      // Step 5: Auto-dismiss overlay after reading time
+      setTimeout(() => {
+        setOverlayVisible(false);
+        setOverlayText("");
+        setOverlayActions(false);
+      }, 8000);
+    }, 2000);
+  };
+
+  const dismissOverlay = () => {
+    setOverlayVisible(false);
+    setOverlayText("");
+    setOverlayActions(false);
   };
 
   return (
-    <div className="flex flex-col h-full items-center justify-center relative">
-      {/* Premium logo */}
-      <div className="mb-12 text-center animate-fade-in">
-        <h1 className="text-4xl md:text-5xl font-black tracking-[0.15em]">
-          <span className="bg-gradient-to-r from-emerald-400 via-primary to-amber-400 bg-clip-text text-transparent">
-            BUILDVERSE
-          </span>
-        </h1>
+    <div className="flex flex-col h-full gap-2">
+      {/* ── 3D Viewer (65%) ── */}
+      <div className="relative flex-[65] min-h-0 rounded-2xl overflow-hidden">
+        <Suspense
+          fallback={
+            <div className="w-full h-full glass-card rounded-2xl flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+                <p className="text-sm text-muted-foreground">Загрузка 3D-сцены…</p>
+              </div>
+            </div>
+          }
+        >
+          <Viewer3D />
+        </Suspense>
+
+        {/* ── OVERLAY ANIMATION ── */}
+        {overlayVisible && (
+          <div
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center transition-all duration-500"
+            style={{ backdropFilter: "blur(8px)", background: "hsla(204, 80%, 12%, 0.75)" }}
+            onClick={() => overlayText && dismissOverlay()}
+          >
+            {!overlayText ? (
+              /* Pulsing logo during processing */
+              <div className="text-center animate-fade-in">
+                <h2 className="text-3xl md:text-4xl font-black tracking-[0.15em] mb-4">
+                  <span className="bg-gradient-to-r from-emerald-400 via-primary to-amber-400 bg-clip-text text-transparent animate-pulse">
+                    BUILDVERSE
+                  </span>
+                </h2>
+                <p className="text-sm text-muted-foreground animate-pulse">
+                  BUILDVERSE проводит анализ...
+                </p>
+                <div className="mt-4 w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+              </div>
+            ) : (
+              /* Response text flowing up */
+              <div className="max-w-2xl w-full px-6 animate-fade-in overflow-y-auto max-h-[80%]">
+                <p className="text-sm text-foreground/90 whitespace-pre-line leading-relaxed">
+                  {overlayText}
+                </p>
+
+                {/* Action buttons */}
+                {overlayActions && (
+                  <div className="flex flex-wrap gap-2 mt-6 animate-fade-in">
+                    {[
+                      { icon: Copy, label: "Скопировать" },
+                      { icon: RefreshCw, label: "Перегенерировать" },
+                      { icon: Volume2, label: "Озвучить" },
+                      { icon: Download, label: "Скачать" },
+                      { icon: ThumbsUp, label: "" },
+                      { icon: ThumbsDown, label: "" },
+                      { icon: FileText, label: "PDF" },
+                    ].map((action, i) => (
+                      <button
+                        key={i}
+                        onClick={(e) => { e.stopPropagation(); }}
+                        className="glass-card rounded-lg px-3 py-2 text-xs text-muted-foreground hover:text-primary hover:bg-white/10 transition-all flex items-center gap-1.5"
+                      >
+                        <action.icon className="w-3.5 h-3.5" />
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={dismissOverlay}
+                  className="mt-4 text-xs text-primary hover:underline"
+                >
+                  Закрыть и вернуться к модели
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Agent responses - fade in on background */}
-      {responses.length > 0 && (
-        <div className="w-full max-w-2xl mb-8 space-y-4 px-4">
+      {/* ── AI Agent Chat (35%) ── */}
+      <div className="flex-[35] min-h-0 flex flex-col rounded-2xl glass-card overflow-hidden">
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto scrollbar-none p-4 space-y-3">
+          {responses.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <h3 className="text-lg font-bold text-foreground mb-1">
+                <span className="bg-gradient-to-r from-emerald-400 via-primary to-amber-400 bg-clip-text text-transparent">
+                  BUILDVERSE
+                </span>
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                Расскажите о вашем проекте — от идеи до реальности.
+              </p>
+            </div>
+          )}
           {responses.map((r, i) => (
             <div
               key={i}
-              className={`glass-card rounded-2xl p-6 transition-all duration-700 ease-out ${
-                r.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              className={`glass-card rounded-xl p-4 transition-all duration-500 ${
+                r.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
               }`}
             >
-              <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{r.text}</p>
+              <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{r.text}</p>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Greeting */}
-      {responses.length === 0 && (
-        <p className="text-muted-foreground text-sm md:text-base mb-8 text-center animate-fade-in max-w-lg px-4">
-          Расскажите о вашем проекте — от идеи до реальности.
-        </p>
-      )}
-
-      {/* Central input */}
-      <div className="w-full max-w-2xl px-4 animate-fade-in">
-        <div className="glass-card glass-glow rounded-2xl p-4 flex items-center gap-3 border border-white/15">
-          <button className="text-muted-foreground hover:text-primary transition-colors p-1 shrink-0" title="Добавить файл">
-            <Paperclip className="w-5 h-5" />
-          </button>
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Опишите ваш строительный проект…"
-            className="flex-1 bg-transparent border-0 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 text-base"
-          />
-          {isThinking ? (
-            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
-          ) : (
-            <button onClick={handleSend} className="text-primary hover:text-primary/80 transition-colors p-1 shrink-0" title="Отправить">
-              <Send className="w-5 h-5" />
-            </button>
+          {isThinking && (
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <span className="text-xs text-muted-foreground">Обрабатываю запрос…</span>
+            </div>
           )}
+        </div>
+
+        {/* Input bar */}
+        <div className="p-3 border-t border-white/10">
+          <div className="flex items-center gap-2">
+            <button className="text-muted-foreground hover:text-primary transition-colors p-1.5 shrink-0" title="Прикрепить файл (чертёж, фото, документ)">
+              <Paperclip className="w-4.5 h-4.5" />
+            </button>
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              placeholder="Опишите ваш проект: участок, площадь, бюджет..."
+              className="flex-1 bg-transparent border-0 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 text-sm h-9"
+            />
+            <button className="text-muted-foreground hover:text-primary transition-colors p-1.5 shrink-0" title="Нажмите для голосового ввода">
+              <Mic className="w-4.5 h-4.5" />
+            </button>
+            {isThinking ? (
+              <div className="w-4.5 h-4.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0" />
+            ) : (
+              <button onClick={handleSend} className="text-primary hover:text-primary/80 transition-colors p-1.5 shrink-0" title="Отправить запрос агенту">
+                <Send className="w-4.5 h-4.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -186,7 +294,6 @@ const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* Header */}
       <div className="space-y-2">
         <h2 className="text-2xl font-black text-foreground tracking-wide">Геоинтеллект</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -194,7 +301,6 @@ const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
         </p>
       </div>
 
-      {/* Search bar */}
       <div className="glass-card rounded-2xl p-3 flex items-center gap-2">
         <Search className="w-5 h-5 text-muted-foreground shrink-0" />
         <Input
@@ -204,39 +310,23 @@ const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
           placeholder="Введите адрес или кадастровый номер участка"
           className="flex-1 bg-transparent border-0 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 text-sm"
         />
-        <Button
-          size="sm"
-          onClick={handleSearch}
-          className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs shrink-0"
-        >
+        <Button size="sm" onClick={handleSearch}
+          className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs shrink-0">
           Найти
         </Button>
       </div>
 
-      {/* Interactive map */}
       <div className="glass-card rounded-2xl overflow-hidden relative" style={{ height: "400px" }}>
         {pinPlaced ? (
-          <iframe
-            src="https://yandex.ru/map-widget/v1/?ll=37.617700%2C55.755864&z=12&l=map"
-            width="100%"
-            height="100%"
-            frameBorder="0"
-            allowFullScreen
-            className="absolute inset-0"
-            title="Яндекс Карта"
-          />
+          <iframe src="https://yandex.ru/map-widget/v1/?ll=37.617700%2C55.755864&z=12&l=map" width="100%" height="100%" frameBorder="0" allowFullScreen className="absolute inset-0" title="Яндекс Карта" />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5" />
-            <div className="absolute inset-0 opacity-10" style={{
-              backgroundImage: "radial-gradient(circle at 30% 40%, hsl(var(--primary)) 1px, transparent 1px), radial-gradient(circle at 70% 60%, hsl(var(--primary)) 1px, transparent 1px)",
-              backgroundSize: "60px 60px",
-            }} />
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 30% 40%, hsl(var(--primary)) 1px, transparent 1px), radial-gradient(circle at 70% 60%, hsl(var(--primary)) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
             <MapPin className="w-12 h-12 text-muted-foreground/30 mb-3 relative z-10" />
             <p className="text-sm text-muted-foreground/50 relative z-10">Выберите участок для запуска анализа</p>
           </div>
         )}
-        {/* Pin overlay */}
         {pinPlaced && (
           <div className="absolute top-3 left-3 z-10 glass-card rounded-xl px-3 py-2 text-xs text-foreground flex items-center gap-2">
             <MapPin className="w-4 h-4 text-primary" />
@@ -245,33 +335,23 @@ const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
         )}
       </div>
 
-      {/* Launch analysis button */}
       {pinPlaced && !analysisStarted && (
-        <Button
-          className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 h-12 text-sm font-semibold"
-          onClick={() => setAnalysisStarted(true)}
-        >
+        <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 h-12 text-sm font-semibold" onClick={() => setAnalysisStarted(true)}>
           <Sparkles className="w-4 h-4 mr-2" />
           Запустить анализ выбранного участка
         </Button>
       )}
 
-      {/* 5 Tabs */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
         {geoTabs.map((t) => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all
-              ${activeTab === t.id
-                ? "bg-primary/20 text-primary border border-primary/30"
-                : "glass-card text-muted-foreground hover:text-foreground hover:bg-white/10"
-              }`}>
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${activeTab === t.id ? "bg-primary/20 text-primary border border-primary/30" : "glass-card text-muted-foreground hover:text-foreground hover:bg-white/10"}`}>
             <t.icon className="w-4 h-4" />
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* Tab content panel */}
       <div className="glass-card rounded-2xl p-6 min-h-[120px] flex items-center justify-center animate-fade-in">
         {analysisStarted ? (
           <div className="text-center space-y-2">
@@ -281,29 +361,18 @@ const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
           </div>
         ) : (
           <div className="text-center space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Анализ будет выполнен после подключения AI-агента.
-            </p>
-            <p className="text-xs text-muted-foreground/50">
-              Данные автоматически передадутся в BIM Studio
-            </p>
+            <p className="text-sm text-muted-foreground">Анализ будет выполнен после подключения AI-агента.</p>
+            <p className="text-xs text-muted-foreground/50">Данные автоматически передадутся в BIM Studio</p>
           </div>
         )}
       </div>
 
-      {/* Bottom buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Button
-          className="w-full glass-card hover:glass-glow text-foreground border border-white/15 h-12 text-sm"
-          variant="ghost"
-        >
+        <Button className="w-full glass-card hover:glass-glow text-foreground border border-white/15 h-12 text-sm" variant="ghost">
           <Download className="w-4 h-4 mr-2 text-primary" />
           Экспортировать все данные в мой проект
         </Button>
-        <Button
-          className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 h-12 text-sm"
-          onClick={() => onNavigate("chat")}
-        >
+        <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 h-12 text-sm" onClick={() => onNavigate("chat")}>
           <Bot className="w-4 h-4 mr-2" />
           Передать данные центральному AI-агенту для создания полного BIM
         </Button>
@@ -334,9 +403,7 @@ const ProjectsContent = ({ onNavigate }: { onNavigate: (id: string) => void }) =
       <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
         {filters.map((f) => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-              filter === f ? "bg-primary/20 text-primary border border-primary/30" : "glass-card text-muted-foreground hover:text-foreground"
-            }`}>{filterLabels[f]}</button>
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${filter === f ? "bg-primary/20 text-primary border border-primary/30" : "glass-card text-muted-foreground hover:text-foreground"}`}>{filterLabels[f]}</button>
         ))}
       </div>
       {filtered.map((p) => (
@@ -346,11 +413,7 @@ const ProjectsContent = ({ onNavigate }: { onNavigate: (id: string) => void }) =
               <h4 className="text-sm font-bold text-foreground">{p.name}</h4>
               <p className="text-xs text-muted-foreground">{p.type} • {p.status}</p>
             </div>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              p.status === "В работе" ? "bg-primary/20 text-primary" :
-              p.status === "Завершён" ? "bg-green-500/20 text-green-400" :
-              "bg-white/10 text-muted-foreground"
-            }`}>{p.progress}%</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === "В работе" ? "bg-primary/20 text-primary" : p.status === "Завершён" ? "bg-green-500/20 text-green-400" : "bg-white/10 text-muted-foreground"}`}>{p.progress}%</span>
           </div>
           <div className="w-full bg-white/10 rounded-full h-1.5">
             <div className="bg-primary rounded-full h-1.5 transition-all" style={{ width: `${p.progress}%` }} />
@@ -393,9 +456,7 @@ const StroynetContent = ({ onRequestAuth }: { onRequestAuth: () => void }) => {
       <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
         {channels.map((c) => (
           <button key={c} onClick={() => setChannel(c)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-              channel === c ? "bg-primary/20 text-primary border border-primary/30" : "glass-card text-muted-foreground hover:text-foreground"
-            }`}>{c}</button>
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${channel === c ? "bg-primary/20 text-primary border border-primary/30" : "glass-card text-muted-foreground hover:text-foreground"}`}>{c}</button>
         ))}
       </div>
       <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30" onClick={onRequestAuth}>
@@ -468,11 +529,8 @@ const MarketplaceContent = () => {
   });
 
   const addToCart = (p: typeof marketProducts[0]) => {
-    if (!cart.find((c) => c.id === p.id)) {
-      setCart([...cart, { id: p.id, name: p.name, price: p.price }]);
-    }
+    if (!cart.find((c) => c.id === p.id)) setCart([...cart, { id: p.id, name: p.name, price: p.price }]);
   };
-
   const removeFromCart = (id: number) => setCart(cart.filter((c) => c.id !== id));
   const total = cart.reduce((s, c) => s + c.price, 0);
 
@@ -482,8 +540,6 @@ const MarketplaceContent = () => {
         <Sparkles className="w-3.5 h-3.5 text-primary" />
         AI‑агент BUILDVERSE подбирает товары под ваш проект, регион и бюджет.
       </p>
-
-      {/* Filters */}
       <div className="glass-card rounded-xl p-3 space-y-2">
         <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
           {marketCategories.map((c) => (
@@ -492,8 +548,7 @@ const MarketplaceContent = () => {
           ))}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <select value={region} onChange={(e) => setRegion(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
+          <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
             {marketRegions.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
           <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
@@ -501,14 +556,11 @@ const MarketplaceContent = () => {
             Подходит для моего проекта
           </label>
         </div>
-        {aiFilter && <p className="text-[10px] text-muted-foreground/50">AI‑агент подбирает товары под ваш проект (регион, тип дома, бюджет).</p>}
+        {aiFilter && <p className="text-[10px] text-muted-foreground/50">AI‑агент подбирает товары под ваш проект.</p>}
       </div>
-
       <Button variant="ghost" size="sm" className="glass-card text-primary text-xs" onClick={() => { setShowAddProduct(true); setAddProductDone(false); }}>
         <Plus className="w-3.5 h-3.5 mr-1" /> Добавить товар (для поставщиков)
       </Button>
-
-      {/* Product grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {filtered.map((p) => (
           <div key={p.id} className="glass-card rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/30 transition-all" onClick={() => setSelectedProduct(p)}>
@@ -527,8 +579,6 @@ const MarketplaceContent = () => {
           </div>
         ))}
       </div>
-
-      {/* Mini cart */}
       {cart.length > 0 && (
         <div className="glass-card rounded-xl p-4 space-y-2 border border-primary/20">
           <h4 className="text-sm font-bold text-foreground flex items-center gap-2"><ShoppingCart className="w-4 h-4 text-primary" /> Корзина</h4>
@@ -545,13 +595,9 @@ const MarketplaceContent = () => {
             <span className="text-foreground">Итого:</span>
             <span className="text-primary">{total.toLocaleString("ru")} ₽</span>
           </div>
-          <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs" onClick={() => setShowOrder(true)}>
-            Оформить заказ
-          </Button>
+          <Button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs" onClick={() => setShowOrder(true)}>Оформить заказ</Button>
         </div>
       )}
-
-      {/* Product modal */}
       <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
         <DialogContent className="glass-card border-white/10 bg-background/95 max-w-md">
           {selectedProduct && (
@@ -584,8 +630,6 @@ const MarketplaceContent = () => {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Order modal */}
       <Dialog open={showOrder} onOpenChange={setShowOrder}>
         <DialogContent className="glass-card border-white/10 bg-background/95 max-w-sm">
           <DialogHeader>
@@ -595,8 +639,6 @@ const MarketplaceContent = () => {
           <Button variant="ghost" className="w-full glass-card text-foreground" onClick={() => setShowOrder(false)}>Закрыть</Button>
         </DialogContent>
       </Dialog>
-
-      {/* Add product modal */}
       <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
         <DialogContent className="glass-card border-white/10 bg-background/95 max-w-md">
           <DialogHeader>
@@ -684,7 +726,6 @@ const InvestContent = () => {
         <Sparkles className="w-3.5 h-3.5 text-primary" />
         AI‑агент BUILDVERSE может подобрать проекты под ваш бюджет и регион.
       </p>
-
       <div className="glass-card rounded-xl p-3 flex items-center gap-2 flex-wrap">
         <select value={regionF} onChange={(e) => setRegionF(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
           {investRegions.map((r) => <option key={r} value={r}>{r === "Все" ? "Регион" : r}</option>)}
@@ -696,11 +737,9 @@ const InvestContent = () => {
           {investStatuses.map((s) => <option key={s} value={s}>{s === "Все" ? "Статус" : s}</option>)}
         </select>
       </div>
-
       <Button variant="ghost" size="sm" className="glass-card text-primary text-xs" onClick={() => { setShowCreate(true); setCreateDone(false); }}>
         <Plus className="w-3.5 h-3.5 mr-1" /> Создать проект / тендер
       </Button>
-
       {filtered.map((p) => (
         <div key={p.id} className="glass-card rounded-xl p-4 space-y-3">
           <div className="flex items-start justify-between">
@@ -712,9 +751,7 @@ const InvestContent = () => {
           </div>
           <p className="text-lg font-bold text-primary">{p.budget}</p>
           <div className="space-y-1">
-            <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>Собрано</span><span>{p.progress}%</span>
-            </div>
+            <div className="flex justify-between text-[11px] text-muted-foreground"><span>Собрано</span><span>{p.progress}%</span></div>
             <Progress value={p.progress} className="h-1.5" />
           </div>
           <Button size="sm" className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs"
@@ -723,7 +760,6 @@ const InvestContent = () => {
           </Button>
         </div>
       ))}
-
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="glass-card border-white/10 bg-background/95 max-w-md">
           <DialogHeader>
@@ -774,7 +810,6 @@ const InvestContent = () => {
           )}
         </DialogContent>
       </Dialog>
-
       <Dialog open={!!applyTo} onOpenChange={() => setApplyTo(null)}>
         <DialogContent className="glass-card border-white/10 bg-background/95 max-w-sm">
           <DialogHeader>
@@ -847,7 +882,6 @@ const ContractorsContent = () => {
         <Sparkles className="w-3.5 h-3.5 text-primary" />
         AI‑агент BUILDVERSE подбирает подрядчиков под ваш проект, регион и бюджет.
       </p>
-
       <div className="glass-card rounded-xl p-3 flex items-center gap-2 flex-wrap">
         <select value={workType} onChange={(e) => setWorkType(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-foreground">
           {contractorWorkTypes.map((w) => <option key={w} value={w}>{w === "Все" ? "Тип работ" : w}</option>)}
@@ -856,7 +890,6 @@ const ContractorsContent = () => {
           {contractorRegions.map((r) => <option key={r} value={r}>{r === "Все" ? "Регион" : r}</option>)}
         </select>
       </div>
-
       {filtered.map((c) => (
         <div key={c.id} className="glass-card rounded-xl p-4 space-y-2">
           <div className="flex items-start justify-between">
@@ -887,8 +920,6 @@ const ContractorsContent = () => {
           </div>
         </div>
       ))}
-
-      {/* Invite modal */}
       <Dialog open={!!inviteTo} onOpenChange={() => setInviteTo(null)}>
         <DialogContent className="glass-card border-white/10 bg-background/95 max-w-sm">
           <DialogHeader>
@@ -936,33 +967,13 @@ const ContractorsContent = () => {
 };
 
 /* ═══════════════════════════════════════════
-   PLACEHOLDER FOR OTHER SECTIONS
-   ═══════════════════════════════════════════ */
-const PlaceholderContent = ({ section }: { section: string }) => {
-  const items: Record<string, string[]> = {
-    estimate: ["Фундамент: 2.1 млн ₽", "Каркас: 4.8 млн ₽", "Итого: 12.4 млн ₽"],
-    passport: ["IoT датчиков: 24", "Гарантия до: 2030", "QR: сгенерирован"],
-    notifications: ["Системных: 3", "Сообщество: 7", "ИИ-рекомендации: 2"],
-  };
-  return (
-    <div className="space-y-3 animate-fade-in">
-      {(items[section] || []).map((item, i) => (
-        <div key={i} className="glass-card rounded-xl px-4 py-3 text-sm text-foreground">{item}</div>
-      ))}
-    </div>
-  );
-};
-
-/* ═══════════════════════════════════════════
    CENTER ZONE (MAIN)
    ═══════════════════════════════════════════ */
 const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole, chatHook }: CenterZoneProps) => {
   const staticPages = ["about"];
 
   const renderContent = () => {
-    if (staticPages.includes(activeSection)) {
-      return <StaticPage slug={activeSection} />;
-    }
+    if (staticPages.includes(activeSection)) return <StaticPage slug={activeSection} />;
     if (activeSection === "tariffs") return <PricingPage />;
     if (activeSection === "estimate") return <EstimatePage onNavigate={onNavigate} />;
     if (activeSection === "passport") return <DigitalPassportPage onNavigate={onNavigate} />;
@@ -981,12 +992,12 @@ const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole, chatHo
       case "market": return <MarketplaceContent />;
       case "invest": return <InvestContent />;
       case "contractors": return <ContractorsContent />;
-      default: return <PlaceholderContent section={activeSection} />;
+      default: return null;
     }
   };
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col gap-3">
+    <div className="flex-1 min-w-0 flex flex-col gap-2">
       {activeSection !== "chat" && (
         <div className="flex items-center justify-between px-1">
           <h2 className="text-lg font-bold text-foreground">
@@ -997,12 +1008,12 @@ const CenterZone = ({ activeSection, onRequestAuth, onNavigate, userRole, chatHo
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             <Bot className="w-3.5 h-3.5" />
-            Вернуться в чат
+            ← Вернуться в чат
           </button>
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto scrollbar-none">
+      <div className={`flex-1 ${activeSection === "chat" ? "" : "overflow-y-auto scrollbar-none"}`}>
         {renderContent()}
       </div>
     </div>

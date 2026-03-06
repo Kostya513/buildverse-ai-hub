@@ -1,19 +1,20 @@
 import { useState } from "react";
 import {
-  Globe, FolderOpen, MessageSquare, Building2, ShoppingCart,
+  Bot, Globe, FolderOpen, MessageSquare, Building2, ShoppingCart,
   HardHat, Calculator, Home, Bell,
 } from "lucide-react";
 
 const tiles = [
+  { icon: Bot, label: "Чат", id: "chat", desc: "AI-агент BUILDVERSE" },
   { icon: Globe, label: "Геоинтеллект", id: "geo", desc: "Анализ участка — климат, грунт, рельеф" },
   { icon: FolderOpen, label: "Мои проекты", id: "projects", desc: "Управление вашими проектами" },
   { icon: MessageSquare, label: "Стройнет", id: "stroynet", desc: "Профессиональное сообщество" },
-  { icon: Building2, label: "Инвестиции", id: "invest", desc: "Публичные инвестпроекты" },
-  { icon: ShoppingCart, label: "Маркетплейс", id: "market", desc: "Материалы и услуги" },
-  { icon: HardHat, label: "Подрядчики", id: "contractors", desc: "Поиск и найм подрядчиков" },
   { icon: Calculator, label: "Смета", id: "estimate", desc: "Расчёт бюджета проекта" },
   { icon: Home, label: "Цифровой паспорт", id: "passport", desc: "Паспорт здания с IoT" },
   { icon: Bell, label: "Уведомления", id: "notifications", desc: "Оповещения и события" },
+  { icon: Building2, label: "Инвестиции", id: "invest", desc: "Публичные инвестпроекты" },
+  { icon: ShoppingCart, label: "Маркетплейс", id: "market", desc: "Материалы и услуги" },
+  { icon: HardHat, label: "Подрядчики", id: "contractors", desc: "Поиск и найм подрядчиков" },
 ];
 
 interface LeftLauncherProps {
