@@ -1,7 +1,26 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
 import ProtectedRoute from "@/routes/ProtectedRoute";
+import { useAppStore } from "@/store/useAppStore";
+
+const RedirectAfterAuth = () => {
+  const isAuthenticated = useAppStore((s) => s.auth.isAuthenticated);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get("redirect");
+    if (redirect) {
+      navigate(decodeURIComponent(redirect), { replace: true });
+    }
+  }, [isAuthenticated, location.search, navigate]);
+
+  return null;
+};
 
 /**
  * Central route configuration. Private routes are wrapped in <ProtectedRoute>
