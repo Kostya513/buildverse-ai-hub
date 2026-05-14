@@ -31,6 +31,8 @@ const RedirectAfterAuth = () => {
  */
 export const AppRouter = () => {
   return (
+    <>
+    <RedirectAfterAuth />
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Index />} />
