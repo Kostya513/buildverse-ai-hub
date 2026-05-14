@@ -49,6 +49,7 @@ export const AppRouter = () => {
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </>
   );
 };
 
