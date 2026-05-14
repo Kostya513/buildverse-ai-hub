@@ -52,6 +52,8 @@ const Index = () => {
           currentChatId={chatHook.currentChatId}
           expanded={sidebarExpanded}
           onToggleExpand={() => setSidebarExpanded(!sidebarExpanded)}
+          chatHook={chatHook}
+          onOpenSettings={() => setActiveSection("settings")}
         />
       </div>
 

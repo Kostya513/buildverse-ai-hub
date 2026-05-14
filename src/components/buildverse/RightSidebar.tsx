@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Clock, FolderOpen, Mic, Loader2, X } from "lucide-react";
+import { Search, Plus, Clock, FolderOpen, Mic, Loader2, Settings as SettingsIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useChats, ChatItem } from "@/hooks/useChats";
+import { toast } from "sonner";
 
 interface RightSidebarProps {
   onNewChat?: () => void;
@@ -10,54 +11,121 @@ interface RightSidebarProps {
   currentChatId?: string | null;
   expanded: boolean;
   onToggleExpand: () => void;
+  chatHook?: ReturnType<typeof useChats>;
+  onOpenSettings?: () => void;
 }
 
 const iconItems = [
-  { id: "search", icon: Search, label: "Поиск", desc: "Поиск по диалогам и проектам" },
-  { id: "new", icon: Plus, label: "Новый чат", desc: "Очистка сессии, старт нового диалога" },
-  { id: "projects", icon: FolderOpen, label: "Проекты", desc: "Доступ к списку проектов" },
-  { id: "history", icon: Clock, label: "История", desc: "История чатов с агентом" },
-  { id: "voice", icon: Mic, label: "Голосовой", desc: "Голосовой режим ввода" },
+  { id: "search", icon: Search, label: "Поиск" },
+  { id: "new", icon: Plus, label: "Новый чат" },
+  { id: "history", icon: Clock, label: "История" },
+  { id: "projects", icon: FolderOpen, label: "Проекты" },
+  { id: "voice", icon: Mic, label: "Голос" },
+  { id: "settings", icon: SettingsIcon, label: "Настройки" },
 ];
 
-const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onToggleExpand }: RightSidebarProps) => {
+const RightSidebar = ({
+  onNewChat,
+  onSelectChat,
+  currentChatId,
+  expanded,
+  onToggleExpand,
+  chatHook,
+  onOpenSettings,
+}: RightSidebarProps) => {
   const { user } = useAuth();
-  const { chats, loadChats, searchChats } = useChats();
-  const [activePanel, setActivePanel] = useState<string | null>(null);
+  const localHook = useChats();
+  const hook = chatHook ?? localHook;
+  const { chats, loadChats, searchChats } = hook;
+
+  const [activePanel, setActivePanel] = useState<string | null>("history");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ChatItem[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [voiceActive, setVoiceActive] = useState(false);
 
   useEffect(() => {
-    if (user) loadChats();
-  }, [user, loadChats]);
+    if (user && !chatHook) loadChats();
+  }, [user, loadChats, chatHook]);
+
+  const startVoice = () => {
+    const SR =
+      (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Голосовой ввод не поддерживается браузером");
+      return;
+    }
+    try {
+      const rec = new (SR as new () => {
+        lang: string;
+        start: () => void;
+        stop: () => void;
+        onresult: (e: { results: { 0: { 0: { transcript: string } } } }) => void;
+        onend: () => void;
+        onerror: (e: { error: string }) => void;
+      })();
+      rec.lang = "ru-RU";
+      setVoiceActive(true);
+      rec.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        toast.success(`Распознано: ${text}`);
+      };
+      rec.onend = () => setVoiceActive(false);
+      rec.onerror = (e) => {
+        toast.error(`Ошибка распознавания: ${e.error}`);
+        setVoiceActive(false);
+      };
+      rec.start();
+    } catch {
+      toast.error("Не удалось запустить распознавание");
+      setVoiceActive(false);
+    }
+  };
 
   const handleIconClick = (id: string) => {
     if (id === "new") {
       onNewChat?.();
       return;
     }
-    if (activePanel === id) {
-      setActivePanel(null);
-    } else {
-      setActivePanel(id);
+    if (id === "settings") {
+      onOpenSettings?.();
+      return;
     }
+    if (id === "voice") {
+      setActivePanel("voice");
+      startVoice();
+      return;
+    }
+    setActivePanel((prev) => (prev === id ? null : id));
+  };
+
+  const handleSelectChat = (chatId: string) => {
+    onSelectChat?.(chatId);
   };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) { setSearchResults(null); return; }
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      return;
+    }
     setSearching(true);
-    const results = await searchChats(searchQuery);
-    setSearchResults(results);
-    setSearching(false);
+    try {
+      const results = await searchChats(searchQuery);
+      setSearchResults(results);
+    } catch {
+      toast.error("Ошибка поиска");
+    } finally {
+      setSearching(false);
+    }
   };
 
   const displayChats = searchResults ?? chats;
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
+    const diff = Date.now() - d.getTime();
     if (diff < 86400000) return "Сегодня";
     if (diff < 172800000) return "Вчера";
     if (diff < 604800000) return `${Math.floor(diff / 86400000)} дн. назад`;
@@ -71,16 +139,21 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
         {iconItems.map((item) => (
           <div key={item.id} className="relative group">
             <button
+              type="button"
               onClick={() => handleIconClick(item.id)}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200
-                ${activePanel === item.id
-                  ? "glass-glow bg-primary/20 border border-primary/40"
-                  : "glass-card hover:bg-white/10 hover:scale-110"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer
+                ${
+                  activePanel === item.id
+                    ? "glass-glow bg-primary/20 border border-primary/40"
+                    : "glass-card hover:bg-white/10 hover:scale-110"
                 }`}
             >
-              <item.icon className={`w-4.5 h-4.5 ${activePanel === item.id ? "text-primary" : "text-muted-foreground"}`} />
+              <item.icon
+                className={`w-4 h-4 ${
+                  activePanel === item.id ? "text-primary" : "text-muted-foreground"
+                }`}
+              />
             </button>
-            {/* Tooltip */}
             <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
               <div className="glass-card rounded-lg px-3 py-1.5 text-[11px] text-foreground whitespace-nowrap">
                 {item.label}
@@ -89,24 +162,10 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
           </div>
         ))}
 
-        {/* Separator */}
-        <div className="w-6 h-px bg-white/15 my-1" />
-
-        {/* Quick command icons */}
-        {["🏠", "📐", "💰", "📊"].map((emoji, i) => (
-          <button
-            key={i}
-            className="w-8 h-8 rounded-lg glass-card flex items-center justify-center text-xs hover:bg-white/10 transition-all hover:scale-110"
-            title="Быстрая команда"
-          >
-            {emoji}
-          </button>
-        ))}
-
-        {/* Expand button */}
         <button
+          type="button"
           onClick={onToggleExpand}
-          className="mt-auto w-10 h-10 rounded-xl glass-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all"
+          className="mt-auto w-10 h-10 rounded-xl glass-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all cursor-pointer"
           title="Развернуть панель"
         >
           <span className="text-xs">◀</span>
@@ -118,27 +177,28 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
   // Expanded mode
   return (
     <aside className="hidden lg:flex flex-col gap-2 w-64 shrink-0 py-2 overflow-hidden animate-slide-in-right">
-      {/* Header */}
       <div className="flex items-center justify-between px-3">
         <h3 className="text-sm font-bold text-foreground">Меню агента</h3>
         <button
+          type="button"
           onClick={onToggleExpand}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
         >
           <span className="text-xs">▶</span>
         </button>
       </div>
 
-      {/* Icon row */}
       <div className="flex gap-1 px-2">
         {iconItems.map((item) => (
           <button
             key={item.id}
+            type="button"
             onClick={() => handleIconClick(item.id)}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg transition-all text-center
-              ${activePanel === item.id
-                ? "bg-primary/20 text-primary"
-                : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
+            className={`flex-1 flex flex-col items-center gap-0.5 py-2 rounded-lg transition-all text-center cursor-pointer
+              ${
+                activePanel === item.id
+                  ? "bg-primary/20 text-primary"
+                  : "hover:bg-white/10 text-muted-foreground hover:text-foreground"
               }`}
           >
             <item.icon className="w-4 h-4" />
@@ -147,12 +207,9 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
         ))}
       </div>
 
-      {/* Separator */}
       <div className="h-px bg-white/10 mx-3" />
 
-      {/* Panels */}
       <div className="flex-1 overflow-y-auto scrollbar-none px-2 space-y-2">
-        {/* Search panel */}
         {activePanel === "search" && (
           <div className="glass-card rounded-xl p-3 space-y-2 animate-fade-in">
             <div className="relative">
@@ -167,18 +224,33 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
               />
             </div>
             {searchResults && (
-              <button onClick={() => { setSearchResults(null); setSearchQuery(""); }}
-                className="text-[10px] text-primary hover:underline">Очистить</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchResults(null);
+                  setSearchQuery("");
+                }}
+                className="text-[10px] text-primary hover:underline cursor-pointer"
+              >
+                Очистить
+              </button>
             )}
-            {searching && <div className="flex justify-center py-2"><Loader2 className="w-4 h-4 animate-spin text-primary" /></div>}
+            {searching && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              </div>
+            )}
             {searchResults && !searching && searchResults.length === 0 && (
               <p className="text-[10px] text-muted-foreground/60 text-center py-2">Ничего не найдено</p>
             )}
-            {searchResults && searchResults.map((chat) => (
+            {searchResults?.map((chat) => (
               <button
                 key={chat.id}
-                onClick={() => onSelectChat?.(chat.id)}
-                className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                type="button"
+                onClick={() => handleSelectChat(chat.id)}
+                className={`w-full text-left px-2 py-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer ${
+                  currentChatId === chat.id ? "ring-2 ring-emerald-500 bg-primary/10" : ""
+                }`}
               >
                 <p className="text-xs text-foreground truncate">{chat.title}</p>
                 <p className="text-[10px] text-muted-foreground">{formatTime(chat.updated_at)}</p>
@@ -187,8 +259,7 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
           </div>
         )}
 
-        {/* History panel */}
-        {(activePanel === "history" || !activePanel) && (
+        {(activePanel === "history" || activePanel === null) && (
           <div className="glass-card rounded-xl p-3 space-y-1 animate-fade-in">
             <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider px-1 mb-2">
               История чатов
@@ -198,28 +269,37 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
             ) : displayChats.length === 0 ? (
               <p className="text-xs text-muted-foreground/60 px-1">Нет чатов</p>
             ) : (
-              displayChats.slice(0, 20).map((chat) => (
-                <button
-                  key={chat.id}
-                  onClick={() => onSelectChat?.(chat.id)}
-                  className={`w-full text-left px-2.5 py-2 rounded-lg hover:bg-white/10 transition-colors group ${
-                    currentChatId === chat.id ? "bg-white/10" : ""
-                  }`}
-                >
-                  <p className="text-xs text-foreground truncate group-hover:text-primary transition-colors">
-                    {chat.title}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <Clock className="w-2.5 h-2.5" />
-                    {formatTime(chat.updated_at)}
-                  </p>
-                </button>
-              ))
+              displayChats.slice(0, 30).map((chat) => {
+                const active = currentChatId === chat.id;
+                return (
+                  <button
+                    key={chat.id}
+                    type="button"
+                    onClick={() => handleSelectChat(chat.id)}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg transition-colors cursor-pointer group ${
+                      active
+                        ? "ring-2 ring-emerald-500 bg-primary/15"
+                        : "hover:bg-white/10"
+                    }`}
+                  >
+                    <p
+                      className={`text-xs truncate transition-colors ${
+                        active ? "text-primary font-medium" : "text-foreground group-hover:text-primary"
+                      }`}
+                    >
+                      {chat.title}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <Clock className="w-2.5 h-2.5" />
+                      {formatTime(chat.updated_at)}
+                    </p>
+                  </button>
+                );
+              })
             )}
           </div>
         )}
 
-        {/* Projects panel */}
         {activePanel === "projects" && (
           <div className="glass-card rounded-xl p-3 space-y-2 animate-fade-in">
             <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider px-1 mb-2">
@@ -228,7 +308,8 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
             {["Дом в Истре", "Таунхаус «Сосны»", "ЖК «Изумрудный»", "Дача в Переделкино"].map((name) => (
               <button
                 key={name}
-                className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-white/10 transition-colors"
+                type="button"
+                className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <p className="text-xs text-foreground flex items-center gap-1.5">
                   <FolderOpen className="w-3 h-3 text-primary" />
@@ -239,33 +320,21 @@ const RightSidebar = ({ onNewChat, onSelectChat, currentChatId, expanded, onTogg
           </div>
         )}
 
-        {/* Voice panel */}
         {activePanel === "voice" && (
           <div className="glass-card rounded-xl p-4 text-center space-y-3 animate-fade-in">
-            <Mic className="w-8 h-8 text-primary mx-auto" />
-            <p className="text-xs text-muted-foreground">Голосовой режим</p>
-            <button className="px-4 py-2 rounded-lg bg-primary/20 text-primary text-xs border border-primary/30 hover:bg-primary/30 transition-colors">
-              🎙 Начать запись
+            <Mic className={`w-8 h-8 mx-auto ${voiceActive ? "text-emerald-500 animate-pulse" : "text-primary"}`} />
+            <p className="text-xs text-muted-foreground">
+              {voiceActive ? "Слушаю..." : "Голосовой режим"}
+            </p>
+            <button
+              type="button"
+              onClick={startVoice}
+              className="px-4 py-2 rounded-lg bg-primary/20 text-primary text-xs border border-primary/30 hover:bg-primary/30 transition-colors cursor-pointer"
+            >
+              🎙 {voiceActive ? "Запись..." : "Начать запись"}
             </button>
-            <p className="text-[10px] text-muted-foreground/60">Нажмите для голосового ввода</p>
           </div>
         )}
-      </div>
-
-      {/* Quick commands */}
-      <div className="px-3">
-        <div className="h-px bg-white/10 mb-2" />
-        <div className="flex gap-1.5 justify-center">
-          {["🏠", "📐", "💰", "📊"].map((emoji, i) => (
-            <button
-              key={i}
-              className="w-8 h-8 rounded-lg glass-card flex items-center justify-center text-xs hover:bg-white/10 transition-all hover:scale-110"
-              title="Быстрая команда"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
       </div>
     </aside>
   );

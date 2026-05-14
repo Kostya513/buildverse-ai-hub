@@ -216,7 +216,7 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
       <div className="flex-[35] min-h-0 flex flex-col rounded-2xl glass-card overflow-hidden">
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto scrollbar-none p-4 space-y-3">
-          {responses.length === 0 && (
+          {responses.length === 0 && (!chatHook?.messages || chatHook.messages.length === 0) && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <h3 className="text-lg font-bold text-foreground mb-1">
                 <span className="bg-gradient-to-r from-emerald-400 via-primary to-amber-400 bg-clip-text text-transparent">
@@ -228,9 +228,28 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
               </p>
             </div>
           )}
+          {chatHook?.loading && (
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              <span className="text-xs text-muted-foreground">Загрузка чата…</span>
+            </div>
+          )}
+          {chatHook?.messages?.map((m) => (
+            <div
+              key={m.id}
+              className={`glass-card rounded-xl p-3 transition-all ${
+                m.role === "user" ? "bg-primary/10 ml-8" : "mr-8"
+              }`}
+            >
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                {m.role === "user" ? "Вы" : "BUILDVERSE AI"}
+              </p>
+              <p className="text-xs text-foreground whitespace-pre-line leading-relaxed">{m.content}</p>
+            </div>
+          ))}
           {responses.map((r, i) => (
             <div
-              key={i}
+              key={`r-${i}`}
               className={`glass-card rounded-xl p-4 transition-all duration-500 ${
                 r.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
               }`}
