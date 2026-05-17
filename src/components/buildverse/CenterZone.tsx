@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, useEffect } from "react";
+import { CHAT_INPUT_EVENT } from "@/lib/chatInputBus";
 import {
   MapPin, Cloud, Mountain, TreePine, Sun, Layers, Plus, Paperclip, Send,
   MessageSquare, Clock, FolderOpen, Heart, ThumbsUp,
