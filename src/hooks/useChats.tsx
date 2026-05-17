@@ -7,6 +7,8 @@ export interface ChatItem {
   title: string;
   created_at: string;
   updated_at: string;
+  is_archived?: boolean;
+  project_id?: string | null;
 }
 
 export interface ChatMessage {
@@ -71,7 +73,6 @@ export const useChats = () => {
       .single();
     if (data) {
       setMessages((prev) => [...prev, data as ChatMessage]);
-      // Update chat title from first user message
       if (role === "user" && messages.length === 0) {
         const title = content.slice(0, 60);
         await supabase.from("chats").update({ title }).eq("id", currentChatId);
@@ -92,9 +93,74 @@ export const useChats = () => {
     return (data as ChatItem[]) || [];
   }, [user]);
 
+  const renameChat = useCallback(async (chatId: string, title: string) => {
+    if (!user || !title.trim()) return;
+    const { error } = await supabase.from("chats").update({ title }).eq("id", chatId);
+    if (!error) setChats((prev) => prev.map((c) => c.id === chatId ? { ...c, title } : c));
+  }, [user]);
+
+  const archiveChat = useCallback(async (chatId: string) => {
+    if (!user) return;
+    const { error } = await (supabase.from("chats") as unknown as {
+      update: (v: Record<string, unknown>) => { eq: (k: string, v: string) => Promise<{ error: unknown }> };
+    }).update({ is_archived: true }).eq("id", chatId);
+    if (!error) setChats((prev) => prev.filter((c) => c.id !== chatId));
+  }, [user]);
+
+  const deleteChat = useCallback(async (chatId: string) => {
+    if (!user) return;
+    await supabase.from("messages").delete().eq("chat_id", chatId);
+    await supabase.from("chats").delete().eq("id", chatId);
+    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    if (currentChatId === chatId) {
+      setCurrentChatId(null);
+      setMessages([]);
+    }
+  }, [user, currentChatId]);
+
+  const cloneChat = useCallback(async (chatId: string): Promise<string | null> => {
+    if (!user) return null;
+    const src = chats.find((c) => c.id === chatId);
+    if (!src) return null;
+    const { data: newChat, error } = await supabase
+      .from("chats")
+      .insert({ user_id: user.id, title: `Копия ${src.title}` })
+      .select()
+      .single();
+    if (error || !newChat) return null;
+    const { data: srcMsgs } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("chat_id", chatId)
+      .order("created_at", { ascending: true });
+    if (srcMsgs && srcMsgs.length) {
+      await supabase.from("messages").insert(
+        srcMsgs.map((m) => ({
+          chat_id: (newChat as ChatItem).id,
+          user_id: user.id,
+          role: (m as ChatMessage).role,
+          content: (m as ChatMessage).content,
+        }))
+      );
+    }
+    setChats((prev) => [newChat as ChatItem, ...prev]);
+    return (newChat as ChatItem).id;
+  }, [user, chats]);
+
+  const exportChat = useCallback(async (chatId: string): Promise<string> => {
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("chat_id", chatId)
+      .order("created_at", { ascending: true });
+    const src = chats.find((c) => c.id === chatId);
+    return JSON.stringify({ chat: src, messages: data ?? [] }, null, 2);
+  }, [chats]);
+
   return {
     chats, currentChatId, messages, loading,
     loadChats, createChat, loadMessages, sendMessage, searchChats,
     setCurrentChatId, setMessages,
+    renameChat, archiveChat, deleteChat, cloneChat, exportChat,
   };
 };
