@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, useEffect } from "react";
+import { CHAT_INPUT_EVENT } from "@/lib/chatInputBus";
 import {
   MapPin, Cloud, Mountain, TreePine, Sun, Layers, Plus, Paperclip, Send,
   MessageSquare, Clock, FolderOpen, Heart, ThumbsUp,
@@ -82,6 +83,17 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [overlayText, setOverlayText] = useState("");
   const [overlayActions, setOverlayActions] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent<string>).detail;
+      if (typeof text === "string") {
+        setInput((prev) => (prev ? `${prev} ${text}` : text));
+      }
+    };
+    window.addEventListener(CHAT_INPUT_EVENT, handler);
+    return () => window.removeEventListener(CHAT_INPUT_EVENT, handler);
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim() || isThinking) return;
