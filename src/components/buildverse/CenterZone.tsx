@@ -84,6 +84,17 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
   const [overlayText, setOverlayText] = useState("");
   const [overlayActions, setOverlayActions] = useState(false);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent<string>).detail;
+      if (typeof text === "string") {
+        setInput((prev) => (prev ? `${prev} ${text}` : text));
+      }
+    };
+    window.addEventListener(CHAT_INPUT_EVENT, handler);
+    return () => window.removeEventListener(CHAT_INPUT_EVENT, handler);
+  }, []);
+
   const handleSend = async () => {
     if (!input.trim() || isThinking) return;
     const query = input;
