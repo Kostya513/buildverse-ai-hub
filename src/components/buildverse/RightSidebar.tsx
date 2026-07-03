@@ -34,7 +34,7 @@ const iconItems = [
   { id: "settings", icon: SettingsIcon, label: "Настройки" },
 ];
 
-/* ───────── Voice mode hook ───────── */
+/* ───────── Voice mode hook ──────── */
 const useVoice = () => {
   const [listening, setListening] = useState(false);
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
@@ -56,7 +56,6 @@ const useVoice = () => {
       stop();
       return;
     }
-    // Probe microphone permission via getUserMedia (must run from gesture)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
@@ -308,37 +307,43 @@ const RightSidebar = ({
   /* ───── Compact mode ───── */
   if (!expanded) {
     return (
-      <>
-        <aside className="hidden lg:flex flex-col items-center gap-2 w-12 shrink-0 py-4">
-          {iconItems.map((item) => (
-            <div key={item.id} className="relative group">
-              <button
-                type="button"
-                onClick={() => handleIconClick(item.id)}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer
-                  ${activePanel === item.id
-                    ? "glass-glow bg-primary/20 border border-primary/40"
-                    : "glass-card hover:bg-white/10 hover:scale-110"
-                  } ${item.id === "voice" && voice.listening ? "ring-2 ring-emerald-500 animate-pulse" : ""}`}
-              >
-                <item.icon className={`w-4 h-4 ${activePanel === item.id ? "text-primary" : "text-muted-foreground"}`} />
-              </button>
-              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="glass-card rounded-lg px-3 py-1.5 text-[11px] text-foreground whitespace-nowrap">
-                  {item.label}
-                </div>
+      <aside 
+        className="flex flex-col items-center gap-2 w-12 py-4 h-full"
+        style={{
+          backgroundColor: 'rgba(10, 22, 40, 0.85)',
+          backdropFilter: 'blur(12px)',
+          borderLeft: '1px solid rgba(77, 208, 225, 0.2)',
+          boxShadow: '-2px 0 8px rgba(77, 208, 225, 0.08)'
+        }}
+      >
+        {iconItems.map((item) => (
+          <div key={item.id} className="relative group">
+            <button
+              type="button"
+              onClick={() => handleIconClick(item.id)}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer
+                ${activePanel === item.id
+                  ? "glass-glow bg-primary/20 border border-primary/40"
+                  : "glass-card hover:bg-white/10 hover:scale-110"
+                } ${item.id === "voice" && voice.listening ? "ring-2 ring-emerald-500 animate-pulse" : ""}`}
+            >
+              <item.icon className={`w-4 h-4 ${activePanel === item.id ? "text-primary" : "text-muted-foreground"}`} />
+            </button>
+            <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="glass-card rounded-lg px-3 py-1.5 text-[11px] text-foreground whitespace-nowrap">
+                {item.label}
               </div>
             </div>
-          ))}
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            className="mt-auto w-10 h-10 rounded-xl glass-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all cursor-pointer"
-            title="Развернуть панель"
-          >
-            <span className="text-xs">◀</span>
-          </button>
-        </aside>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          className="mt-auto w-10 h-10 rounded-xl glass-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all cursor-pointer"
+          title="Развернуть панель"
+        >
+          <span className="text-xs">◀</span>
+        </button>
         <ShareChatModal open={shareChatId !== null} chatId={shareChatId} onOpenChange={(v) => !v && setShareChatId(null)} />
         <ActionConfirmModal
           open={pendingDelete !== null}
@@ -350,13 +355,21 @@ const RightSidebar = ({
           successMessage="Чат удалён"
           onConfirm={async () => { if (pendingDelete) await deleteChat(pendingDelete.id); }}
         />
-      </>
+      </aside>
     );
   }
 
   /* ───── Expanded mode ───── */
   return (
-    <aside className="hidden lg:flex flex-col gap-2 w-64 shrink-0 py-2 overflow-hidden animate-slide-in-right">
+    <aside 
+      className="flex flex-col gap-2 w-64 py-2 overflow-hidden h-full animate-slide-in-right"
+      style={{
+        backgroundColor: 'rgba(10, 22, 40, 0.85)',
+        backdropFilter: 'blur(12px)',
+        borderLeft: '1px solid rgba(77, 208, 225, 0.2)',
+        boxShadow: '-2px 0 8px rgba(77, 208, 225, 0.08)'
+      }}
+    >
       <div className="flex items-center justify-between px-3">
         <h3 className="text-sm font-bold text-foreground">Меню агента</h3>
         <button
@@ -461,7 +474,7 @@ const RightSidebar = ({
                   : "bg-primary/20 text-primary border-primary/30 hover:bg-primary/30"
               }`}
             >
-              🎙 {voice.listening ? "Остановить запись" : "Начать запись"}
+               {voice.listening ? "Остановить запись" : "Начать запись"}
             </button>
             <p className="text-[10px] text-muted-foreground/70">
               Распознанный текст автоматически вставляется в чат

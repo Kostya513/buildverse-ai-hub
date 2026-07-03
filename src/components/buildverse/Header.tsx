@@ -34,9 +34,56 @@ const Header = ({ onHomeClick, onNavigate }: HeaderProps) => {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 glass-card h-14 flex items-center justify-between px-4 md:px-6">
-        <h1 className="text-xl font-black tracking-wider text-foreground cursor-pointer" onClick={onHomeClick}>
-          BUILD<span className="text-primary">VERSE</span>
-        </h1>
+        {/* Обновлённый логотип */}
+        <div className="flex items-center gap-2 group cursor-pointer" onClick={onHomeClick}>
+          {/* Иконка куба */}
+          <svg 
+            width="22" 
+            height="22" 
+            viewBox="0 0 24 24" 
+            fill="none"
+            className="transition-all duration-300 group-hover:scale-110"
+          >
+            <path
+              d="M12 2L2 7L12 12L22 7L12 2Z"
+              stroke="#4DD0E1"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ filter: 'drop-shadow(0 0 6px rgba(77,208,225,0.4))' }}
+            />
+            <path
+              d="M2 17L12 22L22 17"
+              stroke="#4DD0E1"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ filter: 'drop-shadow(0 0 6px rgba(77,208,225,0.4))' }}
+            />
+            <path
+              d="M2 12L12 17L22 12"
+              stroke="#4DD0E1"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ filter: 'drop-shadow(0 0 6px rgba(77,208,225,0.4))' }}
+            />
+          </svg>
+          
+          {/* Текст логотипа */}
+          <h1 
+            className="text-xl transition-all duration-300 group-hover:text-white"
+            style={{
+              fontFamily: 'Manrope, sans-serif',
+              fontWeight: 300,
+              color: '#E8EEF2',
+              letterSpacing: '0.02em',
+              textShadow: '0 0 8px rgba(77,208,225,0.3), 0 0 16px rgba(77,208,225,0.15)'
+            }}
+          >
+            BUILDVERSE
+          </h1>
+        </div>
 
         <div className="flex items-center gap-2">
           {!user ? (

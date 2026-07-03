@@ -26,7 +26,15 @@ const LeftLauncher = ({ activeId, onSelect }: LeftLauncherProps) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   return (
-    <aside className="hidden lg:flex flex-col items-center gap-2 w-16 shrink-0 py-4 overflow-y-auto scrollbar-none relative">
+    <aside 
+      className="flex flex-col items-center gap-2 w-16 py-4 h-full"
+      style={{
+        backgroundColor: 'rgba(10, 22, 40, 0.85)',
+        backdropFilter: 'blur(12px)',
+        borderRight: '1px solid rgba(77, 208, 225, 0.2)',
+        boxShadow: '2px 0 8px rgba(77, 208, 225, 0.08)'
+      }}
+    >
       {tiles.map((tile) => {
         const isActive = activeId === tile.id;
         const isHovered = hoveredId === tile.id;

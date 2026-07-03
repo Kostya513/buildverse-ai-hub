@@ -67,7 +67,7 @@ const sectionTitles: Record<string, string> = {
 };
 
 /* ═══════════════════════════════════════════
-   AI MAIN PAGE — 3D VIEWER + CHAT SPLIT
+   AI MAIN PAGE — CHAT + 3D VIEWER SPLIT
    ═══════════════════════════════════════════ */
 
 interface AgentResponse {
@@ -76,7 +76,7 @@ interface AgentResponse {
 }
 
 const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: string) => void; userRole?: string | null; chatHook?: ReturnType<typeof useChats> }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [input, setInput] = useState("");
   const [responses, setResponses] = useState<AgentResponse[]>([]);
   const [isThinking, setIsThinking] = useState(false);
@@ -101,12 +101,10 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
     setInput("");
     setIsThinking(true);
 
-    // Step 1: Show overlay with pulsing logo
     setOverlayVisible(true);
     setOverlayText("");
     setOverlayActions(false);
 
-    // Persist to DB if logged in
     if (user && chatHook) {
       if (!chatHook.currentChatId) {
         await chatHook.createChat(query.slice(0, 60));
@@ -114,7 +112,6 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
       await chatHook.sendMessage(query, "user");
     }
 
-    // Step 2-3: After "processing", show response text on overlay
     setTimeout(() => {
       const agentText = `Анализирую ваш запрос: «${query}»\n\nДля полной работы с вашим проектом мне потребуется:\n\n• Геоинтеллект — анализ участка\n• BIM Studio — 3D-моделирование\n• Смета — расчёт бюджета\n\nЭти инструменты готовы к работе в экосистеме. Выберите сервис в боковом меню или уточните задачу.`;
 
@@ -122,14 +119,12 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
         chatHook.sendMessage(agentText, "assistant");
       }
 
-      // Animate text appearing
       setOverlayText(agentText);
       setOverlayActions(true);
 
       setResponses((prev) => [...prev, { text: agentText, visible: true }]);
       setIsThinking(false);
 
-      // Step 5: Auto-dismiss overlay after reading time
       setTimeout(() => {
         setOverlayVisible(false);
         setOverlayText("");
@@ -145,87 +140,9 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
   };
 
   return (
-    <div className="flex flex-col h-full gap-2">
-      {/* ── 3D Viewer (65%) ── */}
-      <div className="relative flex-[65] min-h-0 rounded-2xl overflow-hidden">
-        <Suspense
-          fallback={
-            <div className="w-full h-full glass-card rounded-2xl flex items-center justify-center">
-              <div className="text-center space-y-3">
-                <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-                <p className="text-sm text-muted-foreground">Загрузка 3D-сцены…</p>
-              </div>
-            </div>
-          }
-        >
-          <Viewer3D />
-        </Suspense>
-
-        {/* ── OVERLAY ANIMATION ── */}
-        {overlayVisible && (
-          <div
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center transition-all duration-500"
-            style={{ backdropFilter: "blur(8px)", background: "hsla(204, 80%, 12%, 0.75)" }}
-            onClick={() => overlayText && dismissOverlay()}
-          >
-            {!overlayText ? (
-              /* Pulsing logo during processing */
-              <div className="text-center animate-fade-in">
-                <h2 className="text-3xl md:text-4xl font-black tracking-[0.15em] mb-4">
-                  <span className="bg-gradient-to-r from-emerald-400 via-primary to-amber-400 bg-clip-text text-transparent animate-pulse">
-                    BUILDVERSE
-                  </span>
-                </h2>
-                <p className="text-sm text-muted-foreground animate-pulse">
-                  BUILDVERSE проводит анализ...
-                </p>
-                <div className="mt-4 w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-              </div>
-            ) : (
-              /* Response text flowing up */
-              <div className="max-w-2xl w-full px-6 animate-fade-in overflow-y-auto max-h-[80%]">
-                <p className="text-sm text-foreground/90 whitespace-pre-line leading-relaxed">
-                  {overlayText}
-                </p>
-
-                {/* Action buttons */}
-                {overlayActions && (
-                  <div className="flex flex-wrap gap-2 mt-6 animate-fade-in">
-                    {[
-                      { icon: Copy, label: "Скопировать" },
-                      { icon: RefreshCw, label: "Перегенерировать" },
-                      { icon: Volume2, label: "Озвучить" },
-                      { icon: Download, label: "Скачать" },
-                      { icon: ThumbsUp, label: "" },
-                      { icon: ThumbsDown, label: "" },
-                      { icon: FileText, label: "PDF" },
-                    ].map((action, i) => (
-                      <button
-                        key={i}
-                        onClick={(e) => { e.stopPropagation(); }}
-                        className="glass-card rounded-lg px-3 py-2 text-xs text-muted-foreground hover:text-primary hover:bg-white/10 transition-all flex items-center gap-1.5"
-                      >
-                        <action.icon className="w-3.5 h-3.5" />
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  onClick={dismissOverlay}
-                  className="mt-4 text-xs text-primary hover:underline"
-                >
-                  Закрыть и вернуться к модели
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── AI Agent Chat (35%) ── */}
-      <div className="flex-[35] min-h-0 flex flex-col rounded-2xl glass-card overflow-hidden">
+    <div className="flex flex-col gap-2" style={{ height: 'calc(100vh - 580px)', minHeight: '600px' }}>
+      {/* ── AI Agent Chat (компактный) ── */}
+      <div style={{ height: '180px', flexShrink: 0 }} className="flex flex-col rounded-2xl glass-card overflow-hidden">
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto scrollbar-none p-4 space-y-3">
           {responses.length === 0 && (!chatHook?.messages || chatHook.messages.length === 0) && (
@@ -236,8 +153,13 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
                 </span>
               </h3>
               <p className="text-xs text-muted-foreground max-w-sm">
-                Расскажите о вашем проекте — от идеи до реальности.
-              </p>
+  {user && profile?.display_name 
+    ? `${profile.display_name}, я готов к реализации ваших проектов.`
+    : user
+    ? `${user.email?.split('@')[0]}, я готов к реализации ваших проектов.`
+    : 'Расскажите о вашем проекте — от идеи до реальности.'
+  }
+</p>
             </div>
           )}
           {chatHook?.loading && (
@@ -303,13 +225,88 @@ const AIChatContent = ({ onNavigate, userRole, chatHook }: { onNavigate: (id: st
           </div>
         </div>
       </div>
+
+      {/* ─ 3D Viewer (квадратный, большой) ── */}
+      <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '1/1', maxHeight: 'calc(100vh - 260px)', width: '100%' }}>
+        <Suspense
+          fallback={
+            <div className="w-full h-full glass-card rounded-2xl flex items-center justify-center">
+              <div className="text-center space-y-3">
+                <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+                <p className="text-sm text-muted-foreground">Загрузка 3D-сцены…</p>
+              </div>
+            </div>
+          }
+        >
+          <Viewer3D />
+        </Suspense>
+
+        {/* ── OVERLAY ANIMATION ── */}
+        {overlayVisible && (
+          <div
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center transition-all duration-500"
+            style={{ backdropFilter: "blur(8px)", background: "hsla(204, 80%, 12%, 0.75)" }}
+            onClick={() => overlayText && dismissOverlay()}
+          >
+            {!overlayText ? (
+              <div className="text-center animate-fade-in">
+                <h2 className="text-3xl md:text-4xl font-black tracking-[0.15em] mb-4">
+                  <span className="bg-gradient-to-r from-emerald-400 via-primary to-amber-400 bg-clip-text text-transparent animate-pulse">
+                    BUILDVERSE
+                  </span>
+                </h2>
+                <p className="text-sm text-muted-foreground animate-pulse">
+                  BUILDVERSE проводит анализ...
+                </p>
+                <div className="mt-4 w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+              </div>
+            ) : (
+              <div className="max-w-2xl w-full px-6 animate-fade-in overflow-y-auto max-h-[80%]">
+                <p className="text-sm text-foreground/90 whitespace-pre-line leading-relaxed">
+                  {overlayText}
+                </p>
+
+                {overlayActions && (
+                  <div className="flex flex-wrap gap-2 mt-6 animate-fade-in">
+                    {[
+                      { icon: Copy, label: "Скопировать" },
+                      { icon: RefreshCw, label: "Перегенерировать" },
+                      { icon: Volume2, label: "Озвучить" },
+                      { icon: Download, label: "Скачать" },
+                      { icon: ThumbsUp, label: "" },
+                      { icon: ThumbsDown, label: "" },
+                      { icon: FileText, label: "PDF" },
+                    ].map((action, i) => (
+                      <button
+                        key={i}
+                        onClick={(e) => { e.stopPropagation(); }}
+                        className="glass-card rounded-lg px-3 py-2 text-xs text-muted-foreground hover:text-primary hover:bg-white/10 transition-all flex items-center gap-1.5"
+                      >
+                        <action.icon className="w-3.5 h-3.5" />
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={dismissOverlay}
+                  className="mt-4 text-xs text-primary hover:underline"
+                >
+                  Закрыть и вернуться к модели
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-/* ═══════════════════════════════════════════
+/* ══════════════════════════════════════════
    GEO CONTENT (INTERACTIVE MAP)
-   ═══════════════════════════════════════════ */
+   ══════════════════════════════════════════ */
 const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
   const [activeTab, setActiveTab] = useState("climate");
   const [searchQuery, setSearchQuery] = useState("");
@@ -414,7 +411,7 @@ const GeoContent = ({ onNavigate }: { onNavigate: (id: string) => void }) => {
 
 /* ═══════════════════════════════════════════
    MY PROJECTS
-   ═══════════════════════════════════════════ */
+   ══════════════════════════════════════════ */
 const projectsMock = [
   { id: 1, name: "Дом в Истре", type: "Дом", status: "В работе", progress: 67 },
   { id: 2, name: "Таунхаус «Сосны»", type: "Таунхаус", status: "Черновик", progress: 15 },
@@ -716,7 +713,7 @@ const MarketplaceContent = () => {
 
 /* ═══════════════════════════════════════════
    INVESTMENTS
-   ═══════════════════════════════════════════ */
+   ══════════════════════════════════════════ */
 const investProjects = [
   { id: 1, name: 'ЖК «Зелёный квартал»', type: "ЖК", region: "Москва", budget: "2.4 млрд ₽", status: "Ищут инвестора", progress: 65 },
   { id: 2, name: 'ТЦ «Галактика»', type: "ТЦ", region: "СПб", budget: "890 млн ₽", status: "Строится", progress: 42 },

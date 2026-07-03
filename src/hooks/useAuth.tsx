@@ -26,7 +26,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, role: string, extra?: { inn?: string; ogrn?: string }) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, role: string, extra?: { inn?: string; ogrn?: string; display_name?: string }) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -76,24 +76,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, role: string, extra?: { inn?: string; ogrn?: string }) => {
+  const signUp = async (email: string, password: string, role: string, extra?: { inn?: string; ogrn?: string; display_name?: string }) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { role, display_name: email },
+        data: { role, display_name: extra?.display_name || email },
         emailRedirectTo: window.location.origin,
       },
     });
     if (error) return { error: error.message };
 
     // Update profile with extra fields if needed
-    if (extra?.inn || extra?.ogrn) {
+    if (extra?.inn || extra?.ogrn || extra?.display_name) {
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
         await supabase.from("profiles").update({
           inn: extra.inn || null,
           ogrn: extra.ogrn || null,
+          display_name: extra.display_name || null,
         }).eq("user_id", newUser.id);
       }
     }
