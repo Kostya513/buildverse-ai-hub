@@ -109,10 +109,6 @@ const Header = ({ onHomeClick, onNavigate }: HeaderProps) => {
                     <p className="text-xs font-medium text-foreground truncate">{user.email}</p>
                     <p className="text-[10px] text-primary">{profile?.role || "user"}</p>
                   </div>
-                  <button onClick={() => { setDropdownOpen(false); onNavigate?.("profile"); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-white/10 transition-colors">
-                    <User className="w-4 h-4 text-muted-foreground" /> Профиль
-                  </button>
                   <button onClick={() => { setDropdownOpen(false); onNavigate?.("settings"); }}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-white/10 transition-colors">
                     <Settings className="w-4 h-4 text-muted-foreground" /> Настройки

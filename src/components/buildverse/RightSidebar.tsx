@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Search, Plus, Clock, FolderOpen, Mic, Loader2, Settings as SettingsIcon,
+  Search, Plus, Clock, FolderOpen, Mic, Loader2,
   MoreVertical, Pencil, Copy as CopyIcon, ExternalLink, Share2, Download, Archive, Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +22,6 @@ interface RightSidebarProps {
   expanded: boolean;
   onToggleExpand: () => void;
   chatHook?: ReturnType<typeof useChats>;
-  onOpenSettings?: () => void;
 }
 
 const iconItems = [
@@ -31,7 +30,6 @@ const iconItems = [
   { id: "history", icon: Clock, label: "История" },
   { id: "projects", icon: FolderOpen, label: "Проекты" },
   { id: "voice", icon: Mic, label: "Голос" },
-  { id: "settings", icon: SettingsIcon, label: "Настройки" },
 ];
 
 /* ───────── Voice mode hook ──────── */
@@ -116,7 +114,7 @@ const useVoice = () => {
 };
 
 const RightSidebar = ({
-  onNewChat, onSelectChat, currentChatId, expanded, onToggleExpand, chatHook, onOpenSettings,
+  onNewChat, onSelectChat, currentChatId, expanded, onToggleExpand, chatHook,
 }: RightSidebarProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -141,7 +139,6 @@ const RightSidebar = ({
 
   const handleIconClick = (id: string) => {
     if (id === "new") return onNewChat?.();
-    if (id === "settings") return onOpenSettings?.();
     if (id === "voice") {
       setActivePanel("voice");
       void voice.start();

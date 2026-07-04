@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -59,11 +59,65 @@ const densities = [
 ];
 
 /* ═══════════════════════════════════════════
+   REUSABLE COMPONENTS
+   ═══════════════════════════════════════════ */
+const SettingsCard = ({ title, icon: Icon, badge, children }: {
+  title: string; icon: any; badge?: string; children: React.ReactNode;
+}) => (
+  <div className="glass-card rounded-2xl p-5">
+    <div className="flex items-center gap-2 mb-4">
+      <Icon className="w-4 h-4 text-primary" />
+      <h3 className="text-sm font-bold text-foreground">{title}</h3>
+      {badge && (
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">{badge}</span>
+      )}
+    </div>
+    {children}
+  </div>
+);
+
+const Field = ({ label, value, onChange, placeholder, className }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; className?: string;
+}) => (
+  <div className={`space-y-1.5 ${className || ""}`}>
+    <Label className="text-xs text-muted-foreground">{label}</Label>
+    <Input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="bg-white/5 border-border text-foreground placeholder:text-muted-foreground"
+    />
+  </div>
+);
+
+const ResourceBar = ({ label, used, total, unit }: { label: string; used: number; total: number; unit: string }) => (
+  <div className="space-y-1">
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground">{used} / {total} {unit}</span>
+    </div>
+    <Progress value={(used / total) * 100} className="h-1.5" />
+  </div>
+);
+
+const VerificationBadge = ({ status }: { status: string }) => {
+  const configs: Record<string, { label: string; cls: string }> = {
+    none: { label: "Не верифицирован", cls: "text-muted-foreground bg-muted/20 border-border" },
+    pending: { label: "На проверке", cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
+    verified: { label: "Подтверждено", cls: "text-primary bg-primary/10 border-primary/20" },
+    rejected: { label: "Требуется исправление", cls: "text-destructive bg-destructive/10 border-destructive/20" },
+  };
+  const c = configs[status] || configs.none;
+  return <span className={`text-[10px] px-3 py-1 rounded-full border ${c.cls}`}>{c.label}</span>;
+};
+
+/* ═══════════════════════════════════════════
    SECTION: PROFILE & IDENTITY
    ═══════════════════════════════════════════ */
 const ProfileSection = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, updateProfile } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -86,6 +140,7 @@ const ProfileSection = () => {
     ui_density: "standard",
     profile_visibility: "private",
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile) {
@@ -115,7 +170,122 @@ const ProfileSection = () => {
     }
   }, [profile]);
 
+  // Применение темы
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("light", "dark");
+    
+    if (form.theme === "dark") {
+      root.classList.add("dark");
+    } else if (form.theme === "light") {
+      root.classList.add("light");
+    } else {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.add(prefersDark ? "dark" : "light");
+    }
+  }, [form.theme]);
+
+  // Применение акцентного цвета
+  useEffect(() => {
+    const color = accentColors.find((c) => c.id === form.accent_color);
+    if (color) {
+      document.documentElement.style.setProperty("--primary", color.color);
+    }
+  }, [form.accent_color]);
+
+  // Применение плотности интерфейса
+  useEffect(() => {
+    const root = document.documentElement;
+    if (form.ui_density === "compact") {
+      root.style.setProperty("--spacing", "0.25rem");
+    } else if (form.ui_density === "spacious") {
+      root.style.setProperty("--spacing", "1rem");
+    } else {
+      root.style.setProperty("--spacing", "0.5rem");
+    }
+  }, [form.ui_density]);
+
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
+
+  // Загрузка аватара
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !e.target.files || !e.target.files[0]) return;
+    
+    const file = e.target.files[0];
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Размер файла не должен превышать 5 МБ");
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("профили")  // ← ИСПРАВЛЕНО: русское название bucket
+        .upload(fileName, file, { 
+          cacheControl: "3600",
+          upsert: false 
+        });
+
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("профили")  // ← ИСПРАВЛЕНО: русское название bucket
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("user_id", user.id);
+
+      if (updateError) throw updateError;
+
+      await refreshProfile();
+      toast.success("Аватар обновлён");
+    } catch (error) {
+      console.error("Ошибка загрузки аватара:", error);
+      toast.error("Ошибка загрузки аватара");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  // Удаление аватара
+  const handleAvatarDelete = async () => {
+    if (!user) return;
+    try {
+      await supabase
+        .from("profiles")
+        .update({ avatar_url: null })
+        .eq("user_id", user.id);
+      
+      await refreshProfile();
+      toast.success("Аватар удалён");
+    } catch (error) {
+      toast.error("Ошибка удаления аватара");
+    }
+  };
+
+  // Смена роли
+  const handleRoleChange = async (newRole: string) => {
+    if (!user) return;
+    try {
+      await supabase
+        .from("profiles")
+        .update({ role: newRole })
+        .eq("user_id", user.id);
+      
+      await refreshProfile();
+      toast.success("Роль изменена");
+    } catch (error) {
+      toast.error("Ошибка смены роли");
+    }
+  };
 
   const handleSave = async () => {
     if (!user) return;
@@ -179,18 +349,46 @@ const ProfileSection = () => {
       {/* Avatar & Theme */}
       <SettingsCard title="Аватар и оформление" icon={Palette}>
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary border-2 border-primary/30">
-            {(form.display_name || user?.email || "?").slice(0, 2).toUpperCase()}
-          </div>
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt="Avatar"
+              className="w-16 h-16 rounded-full object-cover border-2 border-primary/30"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-xl font-bold text-primary border-2 border-primary/30">
+              {(form.display_name || user?.email || "?").slice(0, 2).toUpperCase()}
+            </div>
+          )}
           <div className="space-y-2">
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="text-xs border-border text-foreground hover:bg-accent/20">
-                <Upload className="w-3 h-3 mr-1" /> Загрузить
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs border-border text-foreground hover:bg-accent/20"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarUploading}
+              >
+                {avatarUploading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Upload className="w-3 h-3 mr-1" />}
+                Загрузить
               </Button>
               <Button size="sm" variant="ghost" className="text-xs text-muted-foreground">
                 <Sparkles className="w-3 h-3 mr-1" /> AI-аватар
               </Button>
-              <Button size="sm" variant="ghost" className="text-xs text-destructive">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-destructive"
+                onClick={handleAvatarDelete}
+                disabled={!profile?.avatar_url}
+              >
                 <Trash2 className="w-3 h-3 mr-1" /> Удалить
               </Button>
             </div>
@@ -253,16 +451,26 @@ const ProfileSection = () => {
 
       {/* Role */}
       <SettingsCard title="Роль и верификация" icon={FileText}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-sm text-foreground font-medium">{roleLabels[profile?.role || "private"]}</p>
-            <p className="text-xs text-muted-foreground">Текущий тип аккаунта</p>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Текущая роль</Label>
+            <div className="flex items-center gap-3">
+              <select
+                value={profile?.role || "private"}
+                onChange={(e) => handleRoleChange(e.target.value)}
+                className="flex-1 bg-white/5 border border-border rounded-lg px-3 py-2 text-sm text-foreground"
+              >
+                {Object.entries(roleLabels).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+              <span className="text-xs text-muted-foreground">
+                {roleLabels[profile?.role || "private"]}
+              </span>
+            </div>
           </div>
-          <Button size="sm" variant="outline" className="text-xs border-border text-muted-foreground hover:text-primary">
-            Подать заявку на смену роли
-          </Button>
+          <VerificationBadge status={(profile as any)?.verification_status || "none"} />
         </div>
-        <VerificationBadge status={(profile as any)?.verification_status || "none"} />
       </SettingsCard>
 
       {/* Business Fields */}
@@ -362,7 +570,6 @@ const SecuritySection = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Password */}
       <SettingsCard title="Управление паролем" icon={Key}>
         <div className="space-y-3 max-w-md">
           <div className="space-y-1.5">
@@ -400,27 +607,6 @@ const SecuritySection = () => {
         </div>
       </SettingsCard>
 
-      {/* 2FA */}
-      <SettingsCard title="Двухфакторная аутентификация" icon={Shield} badge="Скоро">
-        <div className="opacity-60 pointer-events-none">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground">Приложение-аутентификатор</p>
-              <p className="text-xs text-muted-foreground">Google Authenticator, Authy</p>
-            </div>
-            <Switch disabled />
-          </div>
-          <div className="flex items-center justify-between mt-3">
-            <div>
-              <p className="text-sm text-foreground">SMS-код</p>
-              <p className="text-xs text-muted-foreground">На подтверждённый номер</p>
-            </div>
-            <Switch disabled />
-          </div>
-        </div>
-      </SettingsCard>
-
-      {/* Sessions */}
       <SettingsCard title="Активные сессии" icon={Monitor}>
         <div className="space-y-3">
           <div className="glass-card rounded-xl p-3 flex items-center justify-between">
@@ -457,7 +643,6 @@ const SubscriptionSection = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Current Plan */}
       <SettingsCard title="Текущий тариф" icon={CreditCard}>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -473,7 +658,6 @@ const SubscriptionSection = () => {
         </div>
       </SettingsCard>
 
-      {/* Plans */}
       <SettingsCard title="Доступные планы" icon={Sparkles}>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {plans.map((plan) => (
@@ -497,19 +681,6 @@ const SubscriptionSection = () => {
               </Button>
             </div>
           ))}
-        </div>
-      </SettingsCard>
-
-      {/* Payment History */}
-      <SettingsCard title="История платежей" icon={FileText} badge="Скоро">
-        <p className="text-xs text-muted-foreground">Здесь будет отображаться история ваших платежей и счетов.</p>
-      </SettingsCard>
-
-      {/* Promo */}
-      <SettingsCard title="Промокод" icon={Sparkles}>
-        <div className="flex gap-2 max-w-sm">
-          <Input placeholder="Введите промокод" className="bg-white/5 border-border text-foreground placeholder:text-muted-foreground" />
-          <Button className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs">Применить</Button>
         </div>
       </SettingsCard>
     </div>
@@ -630,10 +801,6 @@ const NotificationsSection = () => {
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Мессенджеры" icon={MessageSquare} badge="Скоро">
-        <p className="text-xs text-muted-foreground">Привязка Telegram/WhatsApp бота для уведомлений.</p>
-      </SettingsCard>
-
       <Button onClick={handleSave} disabled={saving} className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30">
         {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
         Сохранить настройки
@@ -670,14 +837,6 @@ const IntegrationsSection = () => {
           ))}
         </div>
       </SettingsCard>
-
-      <SettingsCard title="Webhooks" icon={Globe} badge="Скоро">
-        <p className="text-xs text-muted-foreground">Настройка вебхуков для получения событий от BUILDVERSE.</p>
-      </SettingsCard>
-
-      <SettingsCard title="API Доступ" icon={Key} badge="Скоро">
-        <p className="text-xs text-muted-foreground">Создание и управление API-ключами для интеграций.</p>
-      </SettingsCard>
     </div>
   );
 };
@@ -698,14 +857,6 @@ const TeamSection = () => (
           Перейти на Business
         </Button>
       </div>
-    </SettingsCard>
-
-    <SettingsCard title="Группы доступа" icon={Users} badge="Скоро">
-      <p className="text-xs text-muted-foreground">Создание групп для управления доступом к проектам.</p>
-    </SettingsCard>
-
-    <SettingsCard title="Аудит и активность" icon={Clock} badge="Скоро">
-      <p className="text-xs text-muted-foreground">Подробная история действий участников команды.</p>
     </SettingsCard>
   </div>
 );
@@ -779,74 +930,8 @@ const PrivacyDataSection = () => {
           </div>
         </div>
       </SettingsCard>
-
-      <SettingsCard title="Согласия и политики" icon={FileText}>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-foreground">Оферта</span>
-            <span className="text-muted-foreground">Принята 20.02.2026</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-foreground">Политика конфиденциальности</span>
-            <span className="text-muted-foreground">Принята 20.02.2026</span>
-          </div>
-        </div>
-      </SettingsCard>
     </div>
   );
-};
-
-/* ═══════════════════════════════════════════
-   REUSABLE COMPONENTS
-   ═══════════════════════════════════════════ */
-const SettingsCard = ({ title, icon: Icon, badge, children }: {
-  title: string; icon: any; badge?: string; children: React.ReactNode;
-}) => (
-  <div className="glass-card rounded-2xl p-5">
-    <div className="flex items-center gap-2 mb-4">
-      <Icon className="w-4 h-4 text-primary" />
-      <h3 className="text-sm font-bold text-foreground">{title}</h3>
-      {badge && (
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">{badge}</span>
-      )}
-    </div>
-    {children}
-  </div>
-);
-
-const Field = ({ label, value, onChange, placeholder, className }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; className?: string;
-}) => (
-  <div className={`space-y-1.5 ${className || ""}`}>
-    <Label className="text-xs text-muted-foreground">{label}</Label>
-    <Input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="bg-white/5 border-border text-foreground placeholder:text-muted-foreground"
-    />
-  </div>
-);
-
-const ResourceBar = ({ label, used, total, unit }: { label: string; used: number; total: number; unit: string }) => (
-  <div className="space-y-1">
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-foreground">{used} / {total} {unit}</span>
-    </div>
-    <Progress value={(used / total) * 100} className="h-1.5" />
-  </div>
-);
-
-const VerificationBadge = ({ status }: { status: string }) => {
-  const configs: Record<string, { label: string; cls: string }> = {
-    none: { label: "Не верифицирован", cls: "text-muted-foreground bg-muted/20 border-border" },
-    pending: { label: "На проверке", cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
-    verified: { label: "Подтверждено", cls: "text-primary bg-primary/10 border-primary/20" },
-    rejected: { label: "Требуется исправление", cls: "text-destructive bg-destructive/10 border-destructive/20" },
-  };
-  const c = configs[status] || configs.none;
-  return <span className={`text-[10px] px-3 py-1 rounded-full border ${c.cls}`}>{c.label}</span>;
 };
 
 /* ═══════════════════════════════════════════

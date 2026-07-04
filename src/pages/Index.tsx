@@ -5,7 +5,7 @@ import CenterZone from "@/components/buildverse/CenterZone";
 import RightSidebar from "@/components/buildverse/RightSidebar";
 import MobileBar from "@/components/buildverse/MobileBar";
 import Footer from "@/components/buildverse/Footer";
-import { HeroSection } from "@/components/HeroSection";  // ← Изменено!
+import { HeroSection } from "@/components/HeroSection";
 import AuthModal from "@/components/buildverse/AuthModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useChats } from "@/hooks/useChats";
@@ -49,7 +49,7 @@ const Index = () => {
       )}
 
       {/* Основной контейнер */}
-      <div className="flex-1 flex pt-2 pb-20 lg:pb-0">
+      <div className="flex-1 flex pb-20 lg:pb-0" style={{ paddingTop: isHomePage ? '8px' : '64px' }}>
         {/* Левая панель - фиксированная */}
         <div className="hidden lg:block fixed left-0 top-14 h-[calc(100vh-3.5rem)] z-40">
           <LeftLauncher activeId={activeSection} onSelect={setActiveSection} />
@@ -84,7 +84,6 @@ const Index = () => {
             expanded={sidebarExpanded}
             onToggleExpand={() => setSidebarExpanded(!sidebarExpanded)}
             chatHook={chatHook}
-            onOpenSettings={() => setActiveSection("settings")}
           />
         </div>
       </div>
